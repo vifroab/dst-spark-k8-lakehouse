@@ -41,6 +41,10 @@ spec:
     "spark.sql.catalog.polaris.warehouse": "polaris"
     "spark.sql.catalog.polaris.io-impl": "org.apache.iceberg.aws.s3.S3FileIO"
     "spark.sql.catalog.polaris.s3.endpoint": "http://minio.minio.svc:9000"
+    "spark.sql.catalog.polaris.s3.path-style-access": "true"
+    "spark.sql.catalog.polaris.s3.access-key-id": "admin"
+    "spark.sql.catalog.polaris.s3.secret-access-key": "password"
+    "spark.sql.catalog.polaris.client.region": "us-east-1"
     "spark.sql.defaultCatalog": "polaris"
 
     # --- Delta Catalog (Optional - if Polaris supports Delta REST) ---

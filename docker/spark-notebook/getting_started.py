@@ -85,20 +85,21 @@ spark = (
         "spark.kubernetes.executor.env.JDK_JAVA_OPTIONS",
         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
     )
-    # --- Polaris (Iceberg) Catalog Configuration ---
+    # --- Polaris (Iceberg) Catalog Configuration (REST + S3 via Polaris server) ---
     .config("spark.sql.catalog.polaris", "org.apache.iceberg.spark.SparkCatalog")
-    .config(
-        "spark.sql.catalog.polaris.catalog-impl", "org.apache.iceberg.rest.RESTCatalog"
-    )
+    .config("spark.sql.catalog.polaris.type", "rest")
     .config(
         "spark.sql.catalog.polaris.uri", "http://polaris.polaris.svc:8181/api/catalog"
     )
+    # This is the name of the catalog we bootstrap via k8s/polaris/polaris-bootstrap.yaml
     .config("spark.sql.catalog.polaris.warehouse", "polaris")
-    # Let Polaris use its default FileIO (FILE-backed catalog)
-    # Polaris auth (internal token service)
     .config("spark.sql.catalog.polaris.credential", "root:s3cr3t")
     .config("spark.sql.catalog.polaris.scope", "PRINCIPAL_ROLE:ALL")
-    .config("spark.sql.catalog.polaris.token-refresh-enabled", "true")
+    .config(
+        "spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation",
+        "vended-credentials",
+    )
+    .config("spark.sql.catalog.polaris.client.region", "irrelevant")
     .config("spark.executor.memory", "512m")
     .config("spark.kubernetes.executor.deleteOnTermination", "false")
     .getOrCreate()
@@ -110,16 +111,21 @@ print("Spark Session Created!")
 print("Creating namespace 'demo' in Polaris...")
 spark.sql("CREATE DATABASE IF NOT EXISTS polaris.demo").show()
 
-# 4. Create an Iceberg table backed by MinIO (explicit LOCATION)
+# 4. Create an Iceberg table backed by MinIO via Polaris (no hard-coded LOCATION)
 print("Creating Iceberg table 'polaris.demo.users'...")
+spark.sql("DROP TABLE IF EXISTS polaris.demo.users")
 spark.sql("""
-    CREATE TABLE IF NOT EXISTS polaris.demo.users (
+    CREATE TABLE polaris.demo.users (
         id INT,
         name STRING,
         age INT
     )
     USING iceberg
 """).show()
+
+# Debug: Print table properties to verify that Polaris set an S3 location
+print("Table Properties (polaris.demo.users):")
+spark.sql("DESCRIBE EXTENDED polaris.demo.users").show(truncate=False)
 
 # 5. Create a Delta table backed by MinIO
 print("Creating Delta table 'delta.`s3a://polaris/delta/demo/users_delta`'...")

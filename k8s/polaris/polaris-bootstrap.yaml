@@ -1,0 +1,88 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap-catalog
+  namespace: polaris
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: polaris-bootstrap
+          image: alpine:3.20
+          env:
+            - name: CLIENT_ID
+              value: "root"
+            - name: CLIENT_SECRET
+              value: "s3cr3t"
+            # Base location for the S3-backed Polaris catalog
+            - name: STORAGE_LOCATION
+              value: "s3://polaris"
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Waiting for Polaris to become ready..."
+              # Simple readiness loop; Polaris service is in the same namespace
+              until curl -sf http://polaris:8181/q/health/ready >/dev/null 2>&1; do
+                echo "Polaris not ready yet, sleeping..."
+                sleep 3
+              done
+
+              echo "Installing curl and jq..."
+              apk add --no-cache curl jq >/dev/null
+
+              echo "Requesting OAuth token from Polaris..."
+              TOKEN=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
+                --user "${CLIENT_ID}:${CLIENT_SECRET}" \
+                -H "Polaris-Realm: POLARIS" \
+                -d grant_type=client_credentials \
+                -d scope=PRINCIPAL_ROLE:ALL | jq -r .access_token)
+
+              if [ -z "${TOKEN}" ] || [ "${TOKEN}" = "null" ]; then
+                echo "Failed to obtain access token from Polaris."
+                exit 1
+              fi
+
+              echo "Creating S3-backed Polaris catalog named 'polaris' with base location ${STORAGE_LOCATION} ..."
+              cat <<EOF >/tmp/catalog-payload.json
+              {
+                "catalog": {
+                  "name": "polaris",
+                  "type": "INTERNAL",
+                  "readOnly": false,
+                  "properties": {
+                    "default-base-location": "${STORAGE_LOCATION}"
+                  },
+                  "storageConfigInfo": {
+                    "storageType": "S3",
+                    "endpoint": "http://minio.minio.svc:9000",
+                    "endpointInternal": "http://minio.minio.svc:9000",
+                    "pathStyleAccess": true
+                  }
+                }
+              }
+              EOF
+
+              HTTP_CODE=$(curl -s -o /tmp/catalog-response.json -w "%{http_code}" \
+                -H "Authorization: Bearer ${TOKEN}" \
+                -H "Polaris-Realm: POLARIS" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                http://polaris:8181/api/management/v1/catalogs \
+                -d @/tmp/catalog-payload.json || true)
+
+              echo "Polaris catalog create HTTP status: ${HTTP_CODE}"
+              cat /tmp/catalog-response.json || true
+
+              # 201 = created, 409 = already exists (both are fine for idempotent bootstrap)
+              if [ "${HTTP_CODE}" != "201" ] && [ "${HTTP_CODE}" != "409" ]; then
+                echo "Unexpected HTTP status when creating catalog; failing Job."
+                exit 1
+              fi
+
+              echo "Polaris S3-backed catalog bootstrap complete."
+
+

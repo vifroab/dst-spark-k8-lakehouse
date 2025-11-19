@@ -36,6 +36,17 @@ spec:
           value: "true"
         - name: polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"
           value: "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+        # S3 / MinIO integration for Polaris itself
+        # These are used by the Polaris server when talking to S3-backed catalogs.
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: AWS_ACCESS_KEY_ID
+          value: "admin"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "password"
+        # Explicitly configure the default realm name used in client configs
+        - name: polaris.realm-context.realms
+          value: "POLARIS"
         # For persistence, you'd add:
         # - name: POLARIS_PERSISTENCE_TYPE
         #   value: "eclipselink"
