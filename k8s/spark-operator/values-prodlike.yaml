@@ -1,0 +1,11 @@
+sparkJobNamespace: spark-prod
+
+fullnameOverride: spark-operator-prod
+
+podLabels:
+  env: prodlike
+
+webhook:
+  enable: true
+
+

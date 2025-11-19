@@ -1,0 +1,49 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: polaris-example
+  namespace: default
+spec:
+  type: Python
+  mode: cluster
+  image: "statkube/spark-base:spark4.0.1-py3.12-1"
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: "local:///opt/workdir/jobs/polaris_example.py"
+  sparkVersion: "4.0.1"
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    memory: "1g"
+    serviceAccount: "spark-sa"
+    labels:
+      role: driver
+  executor:
+    cores: 1
+    instances: 1
+    memory: "1g"
+    labels:
+      role: executor
+  sparkConf:
+    # --- MinIO Configuration ---
+    "spark.hadoop.fs.s3a.endpoint": "http://minio.minio.svc:9000"
+    "spark.hadoop.fs.s3a.access.key": "admin"
+    "spark.hadoop.fs.s3a.secret.key": "password"
+    "spark.hadoop.fs.s3a.path.style.access": "true"
+    "spark.hadoop.fs.s3a.connection.ssl.enabled": "false"
+    "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    
+    # --- Iceberg Catalog (via Polaris) ---
+    "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension"
+    "spark.sql.catalog.polaris": "org.apache.iceberg.spark.SparkCatalog"
+    "spark.sql.catalog.polaris.catalog-impl": "org.apache.iceberg.rest.RESTCatalog"
+    "spark.sql.catalog.polaris.uri": "http://polaris.polaris.svc:8181/api/catalog"
+    "spark.sql.catalog.polaris.warehouse": "polaris"
+    "spark.sql.catalog.polaris.io-impl": "org.apache.iceberg.aws.s3.S3FileIO"
+    "spark.sql.catalog.polaris.s3.endpoint": "http://minio.minio.svc:9000"
+    "spark.sql.defaultCatalog": "polaris"
+
+    # --- Delta Catalog (Optional - if Polaris supports Delta REST) ---
+    # "spark.sql.catalog.delta_cat": "io.delta.catalog.DeltaCatalog"
+    # "spark.sql.catalog.delta_cat.catalog-impl": "io.delta.catalog.rest.RestCatalog"
+    # "spark.sql.catalog.delta_cat.uri": "http://polaris.polaris.svc:8181/api/delta"

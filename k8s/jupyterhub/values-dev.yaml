@@ -1,0 +1,19 @@
+proxy:
+  service:
+    type: NodePort
+
+hub:
+  baseUrl: "/"
+
+singleuser:
+  storage:
+    type: none
+  networkPolicy:
+    enabled: false
+
+# Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
+prePuller:
+  hook:
+    enabled: false
+  continuous:
+    enabled: false

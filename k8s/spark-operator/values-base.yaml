@@ -1,0 +1,13 @@
+sparkJobNamespace: default
+
+enableWebhook: true
+
+rbac:
+  create: true
+
+serviceAccounts:
+  spark:
+    create: true
+    name: spark-sa
+
+

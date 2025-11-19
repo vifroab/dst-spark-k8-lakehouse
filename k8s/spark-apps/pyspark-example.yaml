@@ -1,0 +1,28 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: pyspark-example
+  namespace: default
+spec:
+  type: Python
+  mode: cluster
+  image: "statkube/spark-base:spark4.0.1-py3.12-1"
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: "local:///opt/workdir/jobs/pyspark_example.py"
+  sparkVersion: "4.0.1"
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    memory: "1g"
+    serviceAccount: "spark-sa"
+    labels:
+      role: driver
+  executor:
+    cores: 1
+    instances: 2
+    memory: "2g"
+    labels:
+      role: executor
+
+

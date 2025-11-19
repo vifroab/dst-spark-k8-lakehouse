@@ -1,0 +1,13 @@
+[project]
+name = "dst-spark-environment"
+version = "0.1.0"
+description = "Standard Data Science environment for DST Spark Platform"
+requires-python = ">=3.12"
+dependencies = [
+    "pyspark==3.5.3",
+    "pandas>=2.2.3",
+    "numpy>=2.1.2",
+    "pyarrow>=18.0.0",
+    "requests>=2.32.3",
+]
+

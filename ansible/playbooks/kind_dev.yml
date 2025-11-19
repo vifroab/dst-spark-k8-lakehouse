@@ -1,0 +1,104 @@
+---
+- name: Bootstrap kind-based Spark dev cluster with Spark Operator and JupyterHub
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Match the name you used in your kind commands (or stick to spark-dev)
+    kind_cluster_name: spark-cluster
+    spark_operator_release: spark-operator
+    spark_operator_namespace: spark-operator
+    jupyterhub_release: jhub
+    jupyterhub_namespace: jhub-dev
+
+    # UPDATE THESE TO YOUR NEW 3.5.3 IMAGES
+    spark_base_image: "statkube/spark-base:spark3.5.3-py3.12-1"
+    spark_notebook_image: "statkube/spark-notebook:spark3.5.3-py3.12-1"
+
+    load_images: false
+
+    # Treat this playbook as being inside ansible/playbooks relative to repo root
+    repo_root: "{{ playbook_dir }}/../.."
+
+  tasks:
+    - name: Ensure kind cluster exists
+      ansible.builtin.command:
+        cmd: "kind create cluster --name {{ kind_cluster_name }}"
+      register: kind_create
+      failed_when: kind_create.rc not in [0, 1]
+      changed_when: kind_create.rc == 0
+
+    - name: Use kind cluster context
+      ansible.builtin.command:
+        cmd: "kubectl config use-context kind-{{ kind_cluster_name }}"
+
+    - name: Optionally load base image into kind
+      ansible.builtin.command:
+        cmd: "kind load docker-image {{ spark_base_image }} --name {{ kind_cluster_name }}"
+      when: load_images | bool
+
+    - name: Optionally load notebook image into kind
+      ansible.builtin.command:
+        cmd: "kind load docker-image {{ spark_notebook_image }} --name {{ kind_cluster_name }}"
+      when: load_images | bool
+
+    - name: Add Spark Operator Helm repo
+      ansible.builtin.command:
+        cmd: "helm repo add spark-operator https://kubeflow.github.io/spark-operator"
+      register: spark_repo
+      changed_when: "'\"spark-operator\" has been added' in spark_repo.stdout"
+      failed_when: spark_repo.rc not in [0]
+
+    - name: Add JupyterHub Helm repo
+      ansible.builtin.command:
+        cmd: "helm repo add jupyterhub https://jupyterhub.github.io/helm-chart/"
+      register: jhub_repo
+      changed_when: "'\"jupyterhub\" has been added' in jhub_repo.stdout"
+      failed_when: jhub_repo.rc not in [0]
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: "helm repo update"
+      register: helm_repo_update
+      failed_when: false
+
+    - name: Install or upgrade Spark Operator (dev)
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install {{ spark_operator_release }} spark-operator/spark-operator
+          --namespace {{ spark_operator_namespace }} --create-namespace
+          -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
+          -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
+
+    - name: Install or upgrade JupyterHub (dev)
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install {{ jupyterhub_release }} jupyterhub/jupyterhub
+          --namespace {{ jupyterhub_namespace }} --create-namespace
+          -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-dev.yaml
+
+    - name: Deploy MinIO
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/minio/minio.yaml"
+
+    - name: Deploy Polaris
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris.yaml"
+
+    - name: Create spark-sa ServiceAccount in jhub-dev
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/jupyterhub/service-account.yaml"
+
+    - name: Grant spark-sa access to default namespace
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/jupyterhub/spark-rbac.yaml"
+
+    - name: Create spark-sa ServiceAccount in default namespace
+      ansible.builtin.command:
+        cmd: "kubectl create serviceaccount spark-sa --namespace default"
+      register: create_sa_default
+      failed_when: create_sa_default.rc not in [0, 1]
+      changed_when: create_sa_default.rc == 0
+

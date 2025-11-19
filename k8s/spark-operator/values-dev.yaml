@@ -1,0 +1,11 @@
+sparkJobNamespace: default
+
+fullnameOverride: spark-operator
+
+podLabels:
+  env: dev
+
+webhook:
+  enable: true
+
+

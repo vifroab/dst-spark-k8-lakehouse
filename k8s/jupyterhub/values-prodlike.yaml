@@ -1,0 +1,24 @@
+proxy:
+  secretToken: "CHANGE-ME-IN-PROD"
+
+hub:
+  baseUrl: "/"
+
+singleuser:
+  storage:
+    type: dynamic
+    capacity: 10Gi
+    dynamic:
+      storageClass: "standard"
+
+auth:
+  type: dummy
+  dummy:
+    password: "test"
+  # In a real environment, replace with OIDC/LDAP configuration
+
+ingress:
+  enabled: false
+  # For real clusters, enable ingress and configure host, tls, and annotations here.
+
+

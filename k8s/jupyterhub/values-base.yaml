@@ -1,0 +1,33 @@
+hub:
+  image:
+    name: jupyterhub/k8s-hub
+    tag: 4.3.1
+  config:
+    JupyterHub:
+      authenticator_class: dummy
+    DummyAuthenticator:
+      password: "test"
+    Authenticator:
+      admin_users:
+        - user
+    KubeSpawner:
+      uid: 0
+      gid: 0
+      fs_gid: 0
+      service_account: spark-sa
+      automount_service_account_token: true
+
+singleuser:
+  image:
+    name: statkube/spark-notebook
+    tag: spark3.5.3-py3.12-1
+    pullPolicy: IfNotPresent
+  cmd:
+    - jupyterhub-singleuser
+    - --allow-root
+  defaultUrl: "/lab"
+  extraEnv:
+    SPARK_HOME: "/opt/spark"
+    SPARK_MASTER: "k8s://https://kubernetes.default.svc"
+    PYSPARK_PYTHON: "python3"
+    PYSPARK_DRIVER_PYTHON: "python3"
