@@ -73,14 +73,7 @@ spark = (
         "org.apache.spark.sql.delta.catalog.DeltaCatalog",
     )
     # --- Java 17/21 Compatibility (for executors) ---
-    .config(
-        "spark.driver.extraJavaOptions",
-        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
-    )
-    .config(
-        "spark.executor.extraJavaOptions",
-        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
-    )
+    # (Moved to combined config below)
     .config(
         "spark.kubernetes.executor.env.JDK_JAVA_OPTIONS",
         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
@@ -92,14 +85,34 @@ spark = (
         "spark.sql.catalog.polaris.uri", "http://polaris.polaris.svc:8181/api/catalog"
     )
     # This is the name of the catalog we bootstrap via k8s/polaris/polaris-bootstrap.yaml
-    .config("spark.sql.catalog.polaris.warehouse", "polaris")
+    .config(
+        "spark.sql.catalog.polaris.warehouse", "polaris"
+    )
     .config("spark.sql.catalog.polaris.credential", "root:s3cr3t")
     .config("spark.sql.catalog.polaris.scope", "PRINCIPAL_ROLE:ALL")
+    # Required for Polaris to identify the realm
+    .config("spark.sql.catalog.polaris.header.Polaris-Realm", "POLARIS")
+    # Silence the OAuth2 warning
     .config(
-        "spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation",
-        "vended-credentials",
+        "spark.sql.catalog.polaris.oauth2-server-uri",
+        "http://polaris.polaris.svc:8181/api/catalog/v1/oauth/tokens",
     )
-    .config("spark.sql.catalog.polaris.client.region", "irrelevant")
+    # We disable access delegation and instead provide static MinIO credentials via AWS_ env vars.
+    # .config(
+    #     "spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation",
+    #     "vended-credentials",
+    # )
+    .config("spark.sql.catalog.polaris.client.region", "us-east-1")
+    # Make AWS SDK see MinIO credentials on driver & executors for S3FileIO
+    .config("spark.driverEnv.AWS_ACCESS_KEY_ID", "admin")
+    .config("spark.driverEnv.AWS_SECRET_ACCESS_KEY", "password")
+    .config("spark.driverEnv.AWS_REGION", "us-east-1")
+    .config("spark.executorEnv.AWS_ACCESS_KEY_ID", "admin")
+    .config("spark.executorEnv.AWS_SECRET_ACCESS_KEY", "password")
+    .config("spark.executorEnv.AWS_REGION", "us-east-1")
+    # Pass credentials as system properties for AWS SDK (used by Iceberg)
+    .config("spark.driver.extraJavaOptions", "-Daws.accessKeyId=admin -Daws.secretAccessKey=password -Daws.region=us-east-1 --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED")
+    .config("spark.executor.extraJavaOptions", "-Daws.accessKeyId=admin -Daws.secretAccessKey=password -Daws.region=us-east-1 --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=java.base/sun.nio.ch=ALL-UNNAMED")
     .config("spark.executor.memory", "512m")
     .config("spark.kubernetes.executor.deleteOnTermination", "false")
     .getOrCreate()

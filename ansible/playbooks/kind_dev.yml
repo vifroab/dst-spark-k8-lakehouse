@@ -87,6 +87,10 @@
       ansible.builtin.command:
         cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris.yaml"
 
+    - name: Bootstrap Polaris S3-backed catalog (idempotent)
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris-bootstrap.yaml"
+
     - name: Create spark-sa ServiceAccount in jhub-dev
       ansible.builtin.command:
         cmd: "kubectl apply -f {{ repo_root }}/k8s/jupyterhub/service-account.yaml"

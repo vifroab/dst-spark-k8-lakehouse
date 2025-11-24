@@ -66,3 +66,8 @@ spec:
   ports:
   - port: 8181
     targetPort: 8181
+    name: http
+  # Expose Polaris management interface (used for /q/health/ready)
+  - port: 8182
+    targetPort: 8182
+    name: management

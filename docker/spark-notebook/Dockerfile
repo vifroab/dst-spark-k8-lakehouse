@@ -19,10 +19,15 @@ RUN uv pip install --system --no-cache \
 
 RUN python -m ipykernel install --name spark-k8s --display-name "Spark K8s (Python 3.12)"
 
-# --- NEW: Add Template Notebook ---
+# --- NEW: Add Template Notebooks & Connector ---
 COPY getting_started.py /home/jovyan/getting_started.py
+COPY connector.py /home/jovyan/connector.py
+COPY 01_polaris_demo.ipynb /home/jovyan/01_polaris_demo.ipynb
+COPY 02_iceberg_demo.ipynb /home/jovyan/02_iceberg_demo.ipynb
+COPY 03_delta_demo.ipynb /home/jovyan/03_delta_demo.ipynb
+
 # Ensure permissions
-RUN chown -R 1000:1000 /home/jovyan/getting_started.py
+RUN chown -R 1000:1000 /home/jovyan/
 # ----------------------------------
 
 # JupyterHub chart/KubeSpawner will set the command; we just provide the tools.

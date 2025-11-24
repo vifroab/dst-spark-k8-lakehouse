@@ -25,8 +25,8 @@ spec:
             - |
               set -e
               echo "Waiting for Polaris to become ready..."
-              # Simple readiness loop; Polaris service is in the same namespace
-              until curl -sf http://polaris:8181/q/health/ready >/dev/null 2>&1; do
+              # Simple readiness loop; Polaris management interface listens on 8182
+              until curl -sf http://polaris:8182/q/health/ready >/dev/null 2>&1; do
                 echo "Polaris not ready yet, sleeping..."
                 sleep 3
               done
