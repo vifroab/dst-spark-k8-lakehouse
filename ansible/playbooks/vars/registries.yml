@@ -1,0 +1,58 @@
+---
+# Shared Registry Variable Definitions
+# This file documents all registry-related variables used across the project.
+# Actual values are set in inventory files (onprem.yml or internet.yml)
+
+# ============================================
+# Variable Reference
+# ============================================
+#
+# docker_registry_prefix:
+#   Description: Prefix for Docker Hub images
+#   On-Prem: "srvnexus1:80888/"
+#   Internet: ""
+#   Example usage: "{{ docker_registry_prefix }}eclipse-temurin:11-jdk-jammy"
+#
+# ghcr_registry_prefix:
+#   Description: Prefix for GitHub Container Registry images
+#   On-Prem: "srvnexus1:<port>/"
+#   Internet: "ghcr.io/"
+#   Example usage: "{{ ghcr_registry_prefix }}some-org/some-image:tag"
+#
+# helm_spark_operator_repo_url:
+#   Description: URL for Spark Operator Helm repository
+#   On-Prem: Nexus Helm proxy URL
+#   Internet: "https://kubeflow.github.io/spark-operator"
+#
+# helm_jupyterhub_repo_url:
+#   Description: URL for JupyterHub Helm repository
+#   On-Prem: Nexus Helm proxy URL
+#   Internet: "https://jupyterhub.github.io/helm-chart/"
+#
+# ============================================
+# Image Variables
+# ============================================
+#
+# spark_base_image: Full image reference for spark-base
+# spark_notebook_image: Full image reference for spark-notebook
+# jupyterhub_hub_image: Full image reference for JupyterHub hub
+# minio_image: Full image reference for MinIO
+# busybox_image: Full image reference for BusyBox
+# polaris_image: Full image reference for Apache Polaris
+#
+# ============================================
+# Build Variables
+# ============================================
+#
+# spark_base_build_arg:
+#   Description: BASE_IMAGE for spark-base Dockerfile
+#   Used with: docker build --build-arg BASE_IMAGE={{ spark_base_build_arg }}
+#
+# spark_notebook_build_arg:
+#   Description: BASE_IMAGE for spark-notebook Dockerfile
+#   Used with: docker build --build-arg BASE_IMAGE={{ spark_notebook_build_arg }}
+#
+# jupyterhub_hub_build_arg:
+#   Description: BASE_IMAGE for jupyterhub-hub Dockerfile
+#   Used with: docker build --build-arg BASE_IMAGE={{ jupyterhub_hub_build_arg }}
+

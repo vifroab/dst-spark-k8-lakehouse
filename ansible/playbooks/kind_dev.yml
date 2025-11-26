@@ -12,16 +12,36 @@
     jupyterhub_release: jhub
     jupyterhub_namespace: jhub-dev
 
-    # UPDATE THESE TO YOUR NEW 3.5.3 IMAGES
-    spark_base_image: "statkube/spark-base:spark3.5.3-py3.12-1"
-    spark_notebook_image: "statkube/spark-notebook:spark3.5.3-py3.12-1"
-
-    load_images: false
-
     # Treat this playbook as being inside ansible/playbooks relative to repo root
     repo_root: "{{ playbook_dir }}/../.."
 
+    load_images: false
+
+    # ============================================
+    # Default values for standalone execution
+    # When using inventory files, these are overridden
+    # ============================================
+
+    # Helm repository configuration (defaults to public internet repos)
+    _helm_spark_operator_repo_name: "{{ helm_spark_operator_repo_name | default('spark-operator') }}"
+    _helm_spark_operator_repo_url: "{{ helm_spark_operator_repo_url | default('https://kubeflow.github.io/spark-operator') }}"
+    _helm_jupyterhub_repo_name: "{{ helm_jupyterhub_repo_name | default('jupyterhub') }}"
+    _helm_jupyterhub_repo_url: "{{ helm_jupyterhub_repo_url | default('https://jupyterhub.github.io/helm-chart/') }}"
+
+    # Image configuration (defaults to public Docker Hub)
+    _spark_base_image: "{{ spark_base_image | default('statkube/spark-base:spark3.5.3-py3.12-1') }}"
+    _spark_notebook_image: "{{ spark_notebook_image | default('statkube/spark-notebook:spark3.5.3-py3.12-1') }}"
+
   tasks:
+    - name: Display environment configuration
+      ansible.builtin.debug:
+        msg: |
+          Environment: {{ environment_name | default('internet (default)') }}
+          Spark Operator Helm Repo: {{ helm_spark_operator_repo_url }}
+          JupyterHub Helm Repo: {{ helm_jupyterhub_repo_url }}
+          Spark Base Image: {{ spark_base_image }}
+          Spark Notebook Image: {{ spark_notebook_image }}
+
     - name: Ensure kind cluster exists
       ansible.builtin.command:
         cmd: "kind create cluster --name {{ kind_cluster_name }}"
@@ -45,16 +65,16 @@
 
     - name: Add Spark Operator Helm repo
       ansible.builtin.command:
-        cmd: "helm repo add spark-operator https://kubeflow.github.io/spark-operator"
+        cmd: "helm repo add {{ _helm_spark_operator_repo_name }} {{ _helm_spark_operator_repo_url }}"
       register: spark_repo
-      changed_when: "'\"spark-operator\" has been added' in spark_repo.stdout"
+      changed_when: "'has been added' in spark_repo.stdout"
       failed_when: spark_repo.rc not in [0]
 
     - name: Add JupyterHub Helm repo
       ansible.builtin.command:
-        cmd: "helm repo add jupyterhub https://jupyterhub.github.io/helm-chart/"
+        cmd: "helm repo add {{ _helm_jupyterhub_repo_name }} {{ _helm_jupyterhub_repo_url }}"
       register: jhub_repo
-      changed_when: "'\"jupyterhub\" has been added' in jhub_repo.stdout"
+      changed_when: "'has been added' in jhub_repo.stdout"
       failed_when: jhub_repo.rc not in [0]
 
     - name: Update Helm repos
@@ -66,26 +86,32 @@
     - name: Install or upgrade Spark Operator (dev)
       ansible.builtin.command:
         cmd: >
-          helm upgrade --install {{ spark_operator_release }} spark-operator/spark-operator
+          helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator
           --namespace {{ spark_operator_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
           -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
 
-    - name: Install or upgrade JupyterHub (dev)
+    - name: Install or upgrade JupyterHub (dev - internet)
       ansible.builtin.command:
         cmd: >
-          helm upgrade --install {{ jupyterhub_release }} jupyterhub/jupyterhub
+          helm upgrade --install {{ jupyterhub_release }} {{ _helm_jupyterhub_repo_name }}/jupyterhub
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
           -f {{ repo_root }}/k8s/jupyterhub/values-dev.yaml
+      when: environment_name | default('internet') == 'internet'
 
-    - name: Deploy MinIO
+    - name: Install or upgrade JupyterHub (dev - onprem)
       ansible.builtin.command:
-        cmd: "kubectl apply -f {{ repo_root }}/k8s/minio/minio.yaml"
+        cmd: >
+          helm upgrade --install {{ jupyterhub_release }} {{ _helm_jupyterhub_repo_name }}/jupyterhub
+          --namespace {{ jupyterhub_namespace }} --create-namespace
+          -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-onprem.yaml
+      when: environment_name | default('internet') == 'onprem'
 
-    - name: Deploy Polaris
+    - name: Delete existing Polaris bootstrap job (if any)
       ansible.builtin.command:
-        cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris.yaml"
+        cmd: "kubectl delete job polaris-bootstrap-catalog -n polaris --ignore-not-found"
 
     - name: Bootstrap Polaris S3-backed catalog (idempotent)
       ansible.builtin.command:
@@ -105,4 +131,3 @@
       register: create_sa_default
       failed_when: create_sa_default.rc not in [0, 1]
       changed_when: create_sa_default.rc == 0
-

@@ -1,0 +1,86 @@
+# On-Prem MinIO deployment
+# Uses Nexus-proxied container images
+# To deploy: kubectl apply -f minio-onprem.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: minio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  ports:
+    - port: 9000
+      name: api
+      targetPort: 9000
+    - port: 9001
+      name: console
+      targetPort: 9001
+  selector:
+    app: minio
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      # Init container to create MinIO buckets on the shared /data volume
+      initContainers:
+      - name: init-buckets
+        # ON-PREM: Use Nexus-proxied busybox image
+        image: srvnexus1:80888/busybox:1.36
+        command: ["sh", "-c", "mkdir -p /data/polaris && ls -R /data"]
+        volumeMounts:
+        - name: data
+          mountPath: /data
+
+      containers:
+      - name: minio
+        # ON-PREM: Use Nexus-proxied minio image
+        image: srvnexus1:80888/minio/minio:latest
+        args:
+        - server
+        - /data
+        - --console-address
+        - :9001
+        env:
+        - name: MINIO_ROOT_USER
+          value: "admin"
+        - name: MINIO_ROOT_PASSWORD
+          value: "password"
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: minio-pvc
+

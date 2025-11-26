@@ -1,0 +1,79 @@
+# On-Prem Polaris deployment
+# Uses Nexus-proxied container images
+# To deploy: kubectl apply -f polaris-onprem.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: polaris
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polaris
+  namespace: polaris
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: polaris
+  template:
+    metadata:
+      labels:
+        app: polaris
+    spec:
+      containers:
+      - name: polaris
+        # ON-PREM: Use Nexus-proxied polaris image
+        image: srvnexus1:80888/apache/polaris:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8181
+        env:
+        - name: POLARIS_MetaStore_type
+          value: "in-memory"
+        - name: POLARIS_BOOTSTRAP_CREDENTIALS
+          value: "POLARIS,root,s3cr3t"
+        - name: polaris.readiness.ignore-severe-issues
+          value: "true"
+        # NEW: allow FILE catalogs for dev
+        - name: polaris.features."ALLOW_INSECURE_STORAGE_TYPES"
+          value: "true"
+        - name: polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"
+          value: "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+        # S3 / MinIO integration for Polaris itself
+        # These are used by the Polaris server when talking to S3-backed catalogs.
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: AWS_ACCESS_KEY_ID
+          value: "admin"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "password"
+        # Explicitly configure the default realm name used in client configs
+        - name: polaris.realm-context.realms
+          value: "POLARIS"
+        # For persistence, you'd add:
+        # - name: POLARIS_PERSISTENCE_TYPE
+        #   value: "eclipselink"
+        # - name: POLARIS_ECLIPSELINK_DRIVER
+        #   value: "org.postgresql.Driver"
+        # - name: POLARIS_ECLIPSELINK_URL
+        #   value: "jdbc:postgresql://postgres.polaris.svc:5432/polaris"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris
+  namespace: polaris
+spec:
+  selector:
+    app: polaris
+  ports:
+  - port: 8181
+    targetPort: 8181
+    name: http
+  # Expose Polaris management interface (used for /q/health/ready)
+  - port: 8182
+    targetPort: 8182
+    name: management
+
