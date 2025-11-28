@@ -165,14 +165,14 @@ FAILURES=0
 
 verify_docker_images() {
     if [[ -n "${DOCKER_REGISTRY}" && "${DOCKER_REGISTRY}" != "skip" ]]; then
-        section "Verifying Docker Hub Images from ${DOCKER_REGISTRY}"
+    section "Verifying Docker Hub Images from ${DOCKER_REGISTRY}"
     else
         section "Verifying Docker Hub Images (direct access)"
     fi
     
     for image in "${DOCKER_IMAGES[@]}"; do
         if [[ -n "${DOCKER_REGISTRY}" && "${DOCKER_REGISTRY}" != "skip" ]]; then
-            full_image="${DOCKER_REGISTRY}/${image}"
+        full_image="${DOCKER_REGISTRY}/${image}"
         else
             full_image="${image}"
         fi
@@ -193,7 +193,7 @@ verify_docker_images() {
 
 verify_ghcr_images() {
     if [[ -n "${GHCR_REGISTRY}" && "${GHCR_REGISTRY}" != "skip" ]]; then
-        section "Verifying GHCR Images from ${GHCR_REGISTRY}"
+    section "Verifying GHCR Images from ${GHCR_REGISTRY}"
     else
         section "Verifying GHCR Images (direct from ghcr.io)"
     fi
@@ -201,7 +201,7 @@ verify_ghcr_images() {
     
     for image in "${GHCR_IMAGES[@]}"; do
         if [[ -n "${GHCR_REGISTRY}" && "${GHCR_REGISTRY}" != "skip" ]]; then
-            full_image="${GHCR_REGISTRY}/${image}"
+        full_image="${GHCR_REGISTRY}/${image}"
         else
             full_image="ghcr.io/${image}"
         fi

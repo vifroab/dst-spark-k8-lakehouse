@@ -15,9 +15,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 ENV PATH="${JAVA_HOME}/bin:/usr/local/python/bin:${SPARK_HOME}/bin:${SPARK_HOME}/sbin:/usr/local/bin:${PATH}"
 
+# ============================================
+# Configure APT sources for on-prem (optional)
+# ============================================
+# Uncomment the following lines for air-gapped/on-prem deployment:
+# COPY sources.list.nexus /etc/apt/sources.list
+
 # Install build dependencies for Python and runtime dependencies
-# Note: In on-prem environments, APT sources are configured via /etc/apt/sources.list
-# to point to Nexus proxy - no changes needed here
+# Note: In on-prem environments, uncomment the COPY line above to use Nexus APT proxy
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       curl \
