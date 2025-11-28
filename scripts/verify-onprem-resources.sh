@@ -1,15 +1,36 @@
 #!/bin/bash
 # =============================================================================
-# On-Prem Resource Verification Script
+# Resource Verification Script (Online & On-Prem)
 # =============================================================================
-# This script verifies that all required resources are available in the
-# on-prem Nexus environment. Run this BEFORE attempting deployment.
+# This script verifies that all required resources are available.
+# Run this BEFORE attempting deployment.
 #
 # Usage:
+#   # On-prem mode (default):
 #   ./verify-onprem-resources.sh
 #
-# Configuration:
-#   Edit the variables below to match your Nexus setup
+#   # Online mode (test with internet access):
+#   DOCKER_REGISTRY="skip" \
+#   GHCR_REGISTRY="skip" \
+#   HELM_REPO_URL="skip" \
+#   MAVEN_REPO_URL="https://repo1.maven.org/maven2" \
+#   ./verify-onprem-resources.sh
+#
+# Configuration Modes:
+#   - On-prem (Nexus): Use the default configuration below
+#   - Online (Internet): Override with environment variables as shown above
+#
+# The script auto-detects repository structure:
+#   - Flat structure (Nexus spark-jars): Uses filename-only URLs
+#   - Hierarchical structure (Maven Central): Uses org/group/artifact/version/file.jar
+#
+# Quick Switch Examples:
+#   For testing with Maven Central (online):
+#     MAVEN_REPO_URL="https://repo1.maven.org/maven2"
+#   For on-prem Nexus (flat structure):
+#     MAVEN_REPO_URL="https://srvnexus1.dst.dk/repository/apache-spark/spark-jars"
+#   For on-prem Nexus (Maven proxy):
+#     MAVEN_REPO_URL="https://srvnexus1.dst.dk/repository/maven-central"
 # =============================================================================
 
 set -e
@@ -17,18 +38,38 @@ set -e
 # =============================================================================
 # CONFIGURATION - UPDATE THESE FOR YOUR ENVIRONMENT
 # =============================================================================
+# All variables can be overridden by environment variables
 
 # Docker registry (Nexus Docker proxy for Docker Hub images)
-DOCKER_REGISTRY="srvnexus1:80888"
+# Online: leave empty or set to "" to use Docker Hub directly
+# On-prem: set to your Nexus Docker proxy (e.g., srvnexus1.dst.dk:18079)
+: "${DOCKER_REGISTRY:=srvnexus1.dst.dk:18079}"
 
 # GHCR registry (Nexus Docker proxy for ghcr.io images)
-GHCR_REGISTRY="srvnexus1:CHANGEME"
+# Online: set to "ghcr.io"
+# On-prem: set to your Nexus GHCR proxy
+: "${GHCR_REGISTRY:=srvnexus1.dst.dk:18083}"
 
 # Helm repository URL (Nexus Helm proxy)
-HELM_REPO_URL="https://srvnexus1:CHANGEME/repository/helm-hosted"
+# Online: not needed for direct Helm repo access
+# On-prem: set to your Nexus Helm proxy
+: "${HELM_REPO_URL:=https://srvnexus1.dst.dk/repository/helm-proxy}"
 
 # Maven repository URL (Nexus Maven proxy) - for JAR verification
-MAVEN_REPO_URL="https://srvnexus1:CHANGEME/repository/maven-central"
+# For flat JAR storage (just filenames): https://srvnexus1.dst.dk/repository/apache-spark/spark-jars
+# For Maven standard layout: https://srvnexus1.dst.dk/repository/maven-central or https://repo1.maven.org/maven2
+# The script will auto-detect which structure to use based on the URL
+# Can be overridden by setting MAVEN_REPO_URL environment variable
+: "${MAVEN_REPO_URL:=https://srvnexus1.dst.dk/repository/apache-spark/spark-jars}"
+
+# Auto-detect repository structure based on URL
+# Flat structure: URLs containing "spark-jars" or other indicators
+# Hierarchical structure: Maven Central, Nexus maven-central, etc.
+if [[ "${MAVEN_REPO_URL}" == *"spark-jars"* ]]; then
+    USE_FLAT_MAVEN_STRUCTURE=true
+else
+    USE_FLAT_MAVEN_STRUCTURE=false
+fi
 
 # =============================================================================
 # REQUIRED DOCKER IMAGES (Docker Hub via Nexus)
@@ -59,7 +100,18 @@ HELM_CHARTS=(
 # =============================================================================
 # REQUIRED MAVEN JARS
 # =============================================================================
-MAVEN_JARS=(
+# Define JAR filenames and their Maven paths
+# The script will automatically use the appropriate structure
+MAVEN_JAR_NAMES=(
+    "hadoop-aws-3.3.4.jar"
+    "aws-java-sdk-bundle-1.12.623.jar"
+    "iceberg-spark-runtime-3.5_2.12-1.9.0.jar"
+    "iceberg-aws-bundle-1.9.0.jar"
+    "delta-spark_2.12-3.2.0.jar"
+    "delta-storage-3.2.0.jar"
+)
+
+MAVEN_JAR_PATHS=(
     "org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar"
     "com/amazonaws/aws-java-sdk-bundle/1.12.623/aws-java-sdk-bundle-1.12.623.jar"
     "org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.9.0/iceberg-spark-runtime-3.5_2.12-1.9.0.jar"
@@ -112,10 +164,18 @@ FAILURES=0
 # =============================================================================
 
 verify_docker_images() {
-    section "Verifying Docker Hub Images from ${DOCKER_REGISTRY}"
+    if [[ -n "${DOCKER_REGISTRY}" && "${DOCKER_REGISTRY}" != "skip" ]]; then
+        section "Verifying Docker Hub Images from ${DOCKER_REGISTRY}"
+    else
+        section "Verifying Docker Hub Images (direct access)"
+    fi
     
     for image in "${DOCKER_IMAGES[@]}"; do
-        full_image="${DOCKER_REGISTRY}/${image}"
+        if [[ -n "${DOCKER_REGISTRY}" && "${DOCKER_REGISTRY}" != "skip" ]]; then
+            full_image="${DOCKER_REGISTRY}/${image}"
+        else
+            full_image="${image}"
+        fi
         echo -n "  Checking ${image}... "
         
         if docker manifest inspect "${full_image}" > /dev/null 2>&1; then
@@ -132,11 +192,19 @@ verify_docker_images() {
 }
 
 verify_ghcr_images() {
-    section "Verifying GHCR Images from ${GHCR_REGISTRY}"
+    if [[ -n "${GHCR_REGISTRY}" && "${GHCR_REGISTRY}" != "skip" ]]; then
+        section "Verifying GHCR Images from ${GHCR_REGISTRY}"
+    else
+        section "Verifying GHCR Images (direct from ghcr.io)"
+    fi
     info "These images are from ghcr.io (GitHub Container Registry)"
     
     for image in "${GHCR_IMAGES[@]}"; do
-        full_image="${GHCR_REGISTRY}/${image}"
+        if [[ -n "${GHCR_REGISTRY}" && "${GHCR_REGISTRY}" != "skip" ]]; then
+            full_image="${GHCR_REGISTRY}/${image}"
+        else
+            full_image="ghcr.io/${image}"
+        fi
         echo -n "  Checking ${image}... "
         
         if docker manifest inspect "${full_image}" > /dev/null 2>&1; then
@@ -155,6 +223,14 @@ verify_ghcr_images() {
 }
 
 verify_helm_charts() {
+    if [[ -z "${HELM_REPO_URL}" || "${HELM_REPO_URL}" == "skip" ]]; then
+        section "Skipping Helm Chart Verification"
+        info "Helm charts available from public repos:"
+        info "  - Spark Operator: https://kubeflow.github.io/spark-operator"
+        info "  - JupyterHub: https://jupyterhub.github.io/helm-chart/"
+        return 0
+    fi
+    
     section "Verifying Helm Charts from ${HELM_REPO_URL}"
     
     for chart in "${HELM_CHARTS[@]}"; do
@@ -175,14 +251,30 @@ verify_helm_charts() {
 verify_maven_jars() {
     section "Verifying Maven JARs from ${MAVEN_REPO_URL}"
     
-    for jar in "${MAVEN_JARS[@]}"; do
-        jar_name=$(basename "${jar}")
+    if [[ "${USE_FLAT_MAVEN_STRUCTURE}" == "true" ]]; then
+        info "Using flat repository structure (filename-only)"
+    else
+        info "Using hierarchical Maven repository structure"
+    fi
+    
+    # Iterate through JAR arrays using index
+    for i in "${!MAVEN_JAR_NAMES[@]}"; do
+        jar_name="${MAVEN_JAR_NAMES[$i]}"
+        maven_path="${MAVEN_JAR_PATHS[$i]}"
         echo -n "  Checking ${jar_name}... "
         
-        if curl -sf -I "${MAVEN_REPO_URL}/${jar}" > /dev/null 2>&1; then
+        if [[ "${USE_FLAT_MAVEN_STRUCTURE}" == "true" ]]; then
+            # Flat structure: just use filename
+            jar_url="${MAVEN_REPO_URL}/${jar_name}"
+        else
+            # Hierarchical structure: use full Maven path
+            jar_url="${MAVEN_REPO_URL}/${maven_path}"
+        fi
+        
+        if curl -sf -I "${jar_url}" > /dev/null 2>&1; then
             pass "${jar_name}"
         else
-            fail "${jar_name} - not found in Maven repo"
+            fail "${jar_name} - not found at ${jar_url}"
         fi
     done
 }
@@ -245,11 +337,17 @@ echo "On-Prem Resource Verification"
 echo "=============================================="
 echo ""
 echo "Configuration:"
-echo "  Docker Registry: ${DOCKER_REGISTRY}"
-echo "  GHCR Registry:   ${GHCR_REGISTRY}"
-echo "  Helm Repo URL:   ${HELM_REPO_URL}"
-echo "  Maven Repo URL:  ${MAVEN_REPO_URL}"
+echo "  Docker Registry:     ${DOCKER_REGISTRY}"
+echo "  GHCR Registry:       ${GHCR_REGISTRY}"
+echo "  Helm Repo URL:       ${HELM_REPO_URL}"
+echo "  Maven Repo URL:      ${MAVEN_REPO_URL}"
+if [[ "${USE_FLAT_MAVEN_STRUCTURE}" == "true" ]]; then
+    echo "  Maven Structure:     flat (filename-only)"
+else
+    echo "  Maven Structure:     hierarchical (standard Maven)"
+fi
 echo ""
+info "To test with Maven Central (online), change MAVEN_REPO_URL to: https://repo1.maven.org/maven2"
 warn "Update the configuration variables at the top of this script for your environment"
 
 verify_docker_images

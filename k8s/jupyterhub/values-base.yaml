@@ -20,7 +20,7 @@ hub:
 singleuser:
   image:
     name: statkube/spark-notebook
-    tag: spark3.5.3-py3.12-1-v12
+    tag: spark3.5.3-py3.12-1
     pullPolicy: IfNotPresent
   cmd:
     - jupyterhub-singleuser

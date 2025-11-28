@@ -12,7 +12,7 @@ singleuser:
   image:
     # ON-PREM: Use Nexus-proxied spark-notebook image
     name: srvnexus1:80888/statkube/spark-notebook
-    tag: spark3.5.3-py3.12-1-v12
+    tag: spark3.5.3-py3.12-1
     pullPolicy: IfNotPresent
 
 proxy:

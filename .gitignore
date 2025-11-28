@@ -5,6 +5,7 @@
 *.tgz
 *.tar.gz
 *.jar
+*.DS_Store
 # But keep the spark distribution that's already committed
 docker/spark-base/spark-*.tgz
 
