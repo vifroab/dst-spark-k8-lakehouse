@@ -62,7 +62,7 @@ spec:
       containers:
       - name: minio
         # ON-PREM: Use Nexus-proxied minio image
-        image: srvnexus1:80888/minio/minio:latest
+        image: srvnexus1:80888/minio/minio:RELEASE.2024-11-07T00-52-20Z
         args:
         - server
         - /data

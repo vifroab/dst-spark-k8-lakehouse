@@ -77,8 +77,8 @@ fi
 DOCKER_IMAGES=(
     "eclipse-temurin:11-jdk-jammy"
     "busybox:1.36"
-    "minio/minio:latest"
-    "apache/polaris:latest"
+    "minio/minio:RELEASE.2024-11-07T00-52-20Z"
+    "apache/polaris:0.9.0"
     "jupyterhub/k8s-hub:4.3.1"
 )
 

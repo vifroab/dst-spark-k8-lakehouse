@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: polaris
-        image: apache/polaris:latest
+        image: apache/polaris:0.9.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8181
@@ -31,7 +31,7 @@ spec:
           value: "POLARIS,root,s3cr3t"
         - name: polaris.readiness.ignore-severe-issues
           value: "true"
-        # NEW: allow FILE catalogs for dev
+        # NOTE: These properties work with 0.9.0, but changed in 1.2.0+
         - name: polaris.features.ALLOW_INSECURE_STORAGE_TYPES
           value: "true"
         - name: polaris.features.SUPPORTED_CATALOG_STORAGE_TYPES
