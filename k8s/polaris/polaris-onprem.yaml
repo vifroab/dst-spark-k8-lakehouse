@@ -37,10 +37,10 @@ spec:
         - name: polaris.readiness.ignore-severe-issues
           value: "true"
         # NEW: allow FILE catalogs for dev
-        - name: polaris.features."ALLOW_INSECURE_STORAGE_TYPES"
+        - name: polaris.features.ALLOW_INSECURE_STORAGE_TYPES
           value: "true"
-        - name: polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"
-          value: "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+        - name: polaris.features.SUPPORTED_CATALOG_STORAGE_TYPES
+          value: "FILE,S3,GCS,AZURE"
         # S3 / MinIO integration for Polaris itself
         # These are used by the Polaris server when talking to S3-backed catalogs.
         - name: AWS_REGION

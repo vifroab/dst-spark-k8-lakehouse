@@ -1,12 +1,12 @@
 ---
-- name: Bootstrap kind-based Spark dev cluster with Spark Operator and JupyterHub
+- name: Bootstrap k3d-based Spark dev cluster with Spark Operator and JupyterHub
   hosts: localhost
   connection: local
   gather_facts: false
 
   vars:
-    # Match the name you used in your kind commands (or stick to spark-dev)
-    kind_cluster_name: spark-cluster
+    # Cluster name for k3d
+    k3d_cluster_name: spark-cluster
     spark_operator_release: spark-operator
     spark_operator_namespace: spark-operator
     jupyterhub_release: jhub
@@ -16,6 +16,11 @@
     repo_root: "{{ playbook_dir }}/../.."
 
     load_images: false
+
+    # k3d port mappings (host:container@loadbalancer)
+    k3d_http_port: "8080:80@loadbalancer"
+    k3d_https_port: "8443:443@loadbalancer"
+    k3d_agents: 2
 
     # ============================================
     # Default values for standalone execution
@@ -37,30 +42,44 @@
       ansible.builtin.debug:
         msg: |
           Environment: {{ environment_name | default('internet (default)') }}
+          Cluster Type: k3d (k3s in Docker)
           Spark Operator Helm Repo: {{ helm_spark_operator_repo_url }}
           JupyterHub Helm Repo: {{ helm_jupyterhub_repo_url }}
           Spark Base Image: {{ spark_base_image }}
           Spark Notebook Image: {{ spark_notebook_image }}
+          Port Mappings: {{ k3d_http_port }}, {{ k3d_https_port }}
 
-    - name: Ensure kind cluster exists
+    - name: Check if k3d cluster already exists
       ansible.builtin.command:
-        cmd: "kind create cluster --name {{ kind_cluster_name }}"
-      register: kind_create
-      failed_when: kind_create.rc not in [0, 1]
-      changed_when: kind_create.rc == 0
+        cmd: "k3d cluster list -o json"
+      register: k3d_list
+      changed_when: false
+      failed_when: false
 
-    - name: Use kind cluster context
+    - name: Create k3d cluster with port mappings
       ansible.builtin.command:
-        cmd: "kubectl config use-context kind-{{ kind_cluster_name }}"
+        cmd: >
+          k3d cluster create {{ k3d_cluster_name }}
+          --agents {{ k3d_agents }}
+          --port {{ k3d_http_port }}
+          --port {{ k3d_https_port }}
+      register: k3d_create
+      when: k3d_cluster_name not in (k3d_list.stdout | default(''))
+      failed_when: k3d_create.rc not in [0, 1]
+      changed_when: k3d_create.rc == 0
 
-    - name: Optionally load base image into kind
+    - name: Use k3d cluster context
       ansible.builtin.command:
-        cmd: "kind load docker-image {{ spark_base_image }} --name {{ kind_cluster_name }}"
+        cmd: "kubectl config use-context k3d-{{ k3d_cluster_name }}"
+
+    - name: Optionally load base image into k3d
+      ansible.builtin.command:
+        cmd: "k3d image import {{ spark_base_image }} -c {{ k3d_cluster_name }}"
       when: load_images | bool
 
-    - name: Optionally load notebook image into kind
+    - name: Optionally load notebook image into k3d
       ansible.builtin.command:
-        cmd: "kind load docker-image {{ spark_notebook_image }} --name {{ kind_cluster_name }}"
+        cmd: "k3d image import {{ spark_notebook_image }} -c {{ k3d_cluster_name }}"
       when: load_images | bool
 
     - name: Add Spark Operator Helm repo
@@ -91,23 +110,28 @@
           -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
           -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
 
-    - name: Install or upgrade JupyterHub (dev - internet)
+    - name: Install or upgrade JupyterHub (dev - internet with k3d)
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ jupyterhub_release }} {{ _helm_jupyterhub_repo_name }}/jupyterhub
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
-          -f {{ repo_root }}/k8s/jupyterhub/values-dev.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-k3d.yaml
       when: environment_name | default('internet') == 'internet'
 
-    - name: Install or upgrade JupyterHub (dev - onprem)
+    - name: Install or upgrade JupyterHub (dev - onprem with k3d)
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ jupyterhub_release }} {{ _helm_jupyterhub_repo_name }}/jupyterhub
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
           -f {{ repo_root }}/k8s/jupyterhub/values-onprem.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-k3d.yaml
       when: environment_name | default('internet') == 'onprem'
+
+    - name: Create JupyterHub Ingress (routes through Traefik)
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/jupyterhub/ingress-k3d.yaml"
 
     - name: Deploy MinIO (internet)
       ansible.builtin.command:
@@ -163,3 +187,21 @@
       register: create_sa_default
       failed_when: create_sa_default.rc not in [0, 1]
       changed_when: create_sa_default.rc == 0
+
+    - name: Display access information
+      ansible.builtin.debug:
+        msg: |
+          ✅ k3d cluster '{{ k3d_cluster_name }}' is ready!
+          
+          JupyterHub is available at: http://localhost:8080
+          Login: any username / password: test
+          
+          No port-forward needed - k3d's built-in LoadBalancer handles it!
+          
+          Useful commands:
+            kubectl get pods -n jhub-dev
+            kubectl get pods -n spark-operator
+            k3d cluster list
+            k3d cluster stop {{ k3d_cluster_name }}
+            k3d cluster delete {{ k3d_cluster_name }}
+
