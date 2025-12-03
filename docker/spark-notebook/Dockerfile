@@ -49,6 +49,7 @@ COPY 02_iceberg_demo.ipynb /home/jovyan/02_iceberg_demo.ipynb
 COPY 03_delta_demo.ipynb /home/jovyan/03_delta_demo.ipynb
 COPY 04_metrics_demo.py /home/jovyan/04_metrics_demo.py
 RUN jupytext --to notebook /home/jovyan/04_metrics_demo.py
+COPY 05_datahub_lineage_demo.ipynb /home/jovyan/05_datahub_lineage_demo.ipynb
 
 # Add dst_metrics package
 COPY dst_metrics /home/jovyan/dst_metrics
