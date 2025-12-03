@@ -1,0 +1,60 @@
+# Kubernetes Job for DataHub Polaris Ingestion (On-Prem)
+# Uses Nexus-proxied container image
+# To run: kubectl apply -f ingestion-polaris-onprem.yaml
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: datahub-ingest-polaris
+  namespace: datahub
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: datahub-ingestion
+          # ON-PREM: Use Nexus-proxied image
+          image: srvnexus1.dst.dk:18079/acryldata/datahub-ingestion:head
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              set -e
+              echo "Installing Iceberg connector..."
+              pip install --quiet 'acryl-datahub[iceberg]'
+              
+              echo "Waiting for DataHub GMS to be ready..."
+              until curl -sf http://datahub-datahub-gms.datahub.svc:8080/health >/dev/null 2>&1; do
+                echo "DataHub GMS not ready yet, sleeping..."
+                sleep 5
+              done
+              
+              echo "Waiting for Polaris to be ready..."
+              until curl -sf http://polaris.polaris.svc:8182/q/health >/dev/null 2>&1; do
+                echo "Polaris not ready yet, sleeping..."
+                sleep 5
+              done
+              
+              echo "Starting Polaris ingestion..."
+              datahub ingest -c /etc/datahub/polaris-recipe.yaml
+              
+              echo "Ingestion complete!"
+          volumeMounts:
+            - name: recipe-config
+              mountPath: /etc/datahub
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: recipe-config
+          configMap:
+            name: datahub-ingestion-polaris
+

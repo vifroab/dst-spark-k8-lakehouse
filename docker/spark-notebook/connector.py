@@ -37,6 +37,10 @@ def create_spark_session(app_name="spark-k8s-app"):
     polaris_warehouse = "polaris"
     polaris_token_uri = "http://polaris.polaris.svc:8181/api/catalog/v1/oauth/tokens"
 
+    # DataHub OpenLineage Config (for lineage tracking)
+    datahub_gms_url = "http://datahub-datahub-gms.datahub.svc:8080"
+    openlineage_namespace = "spark-k8s-hub"
+
     # Java Options to pass system properties to AWS SDK (crucial for Iceberg)
     # We also include Java 17+ module opens just in case
     aws_java_opts = (
@@ -121,6 +125,21 @@ def create_spark_session(app_name="spark-k8s-app"):
         .config("spark.executorEnv.AWS_ACCESS_KEY_ID", access_key)
         .config("spark.executorEnv.AWS_SECRET_ACCESS_KEY", secret_key)
         .config("spark.executorEnv.AWS_REGION", region)
+        # --- OpenLineage Configuration (DataHub Lineage) ---
+        # Sends Spark job lineage events to DataHub via OpenLineage API
+        .config("spark.openlineage.transport.type", "http")
+        .config(
+            "spark.openlineage.transport.url",
+            f"{datahub_gms_url}/openapi/openlineage/",
+        )
+        .config("spark.openlineage.namespace", openlineage_namespace)
+        .config("spark.openlineage.parentJobNamespace", openlineage_namespace)
+        .config("spark.openlineage.parentJobName", app_name)
+        # OpenLineage Spark listeners - sends lineage events to DataHub
+        .config(
+            "spark.extraListeners",
+            "io.openlineage.spark.agent.OpenLineageSparkListener",
+        )
         .getOrCreate()
     )
 

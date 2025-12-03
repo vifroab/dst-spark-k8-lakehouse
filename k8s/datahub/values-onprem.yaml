@@ -1,0 +1,66 @@
+# DataHub Helm Chart - On-Prem Configuration
+# Layer on top of values-base.yaml for air-gapped deployment via Nexus
+# Uses Nexus-proxied container images
+
+# ============================================
+# DataHub Core Images (Docker Hub via Nexus)
+# ============================================
+
+datahub-gms:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-gms
+    pullPolicy: IfNotPresent
+
+datahub-frontend:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-frontend-react
+    pullPolicy: IfNotPresent
+
+# ============================================
+# Setup Job Images (Docker Hub via Nexus)
+# ============================================
+
+elasticsearchSetupJob:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-elasticsearch-setup
+    pullPolicy: IfNotPresent
+
+mysqlSetupJob:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-mysql-setup
+    pullPolicy: IfNotPresent
+
+kafkaSetupJob:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-kafka-setup
+    pullPolicy: IfNotPresent
+
+datahubSystemUpdate:
+  image:
+    repository: srvnexus1.dst.dk:18079/acryldata/datahub-upgrade
+    pullPolicy: IfNotPresent
+
+# ============================================
+# Prerequisite Images (Docker Hub via Nexus)
+# ============================================
+
+prerequisites:
+  mysql:
+    image:
+      registry: srvnexus1.dst.dk:18079
+      repository: bitnami/mysql
+      pullPolicy: IfNotPresent
+
+  elasticsearch:
+    image: srvnexus1.dst.dk:18079/elasticsearch/elasticsearch
+    imagePullPolicy: IfNotPresent
+
+  kafka:
+    image:
+      registry: srvnexus1.dst.dk:18079
+      repository: bitnami/kafka
+      pullPolicy: IfNotPresent
+
+  cp-schema-registry:
+    image: srvnexus1.dst.dk:18079/confluentinc/cp-schema-registry
+    imagePullPolicy: IfNotPresent

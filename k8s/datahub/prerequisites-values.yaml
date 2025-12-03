@@ -1,0 +1,102 @@
+# DataHub Prerequisites Helm Chart - Base Configuration
+# This chart installs MySQL, Elasticsearch, Kafka for DataHub
+# Release name MUST be "prerequisites"
+
+# ============================================
+# MySQL
+# ============================================
+mysql:
+  enabled: true
+  auth:
+    rootPassword: "datahub"
+    database: "datahub"
+  primary:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# ============================================
+# Elasticsearch - Single node for dev/k3d
+# ============================================
+elasticsearch:
+  enabled: true
+  # Single replica - chart handles single-node discovery automatically
+  replicas: 1
+  minimumMasterNodes: 1
+  # Relax health check for single node
+  clusterHealthCheckParams: "wait_for_status=yellow&timeout=5s"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "1536Mi"
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 1Gi
+  # Only set xpack.security - let chart handle discovery
+  esConfig:
+    elasticsearch.yml: |
+      xpack.security.enabled: false
+      cluster.routing.allocation.disk.threshold_enabled: false
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 10
+
+# ============================================
+# Kafka - ZooKeeper mode
+# ============================================
+kafka:
+  enabled: true
+  kraft:
+    enabled: false
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# ZooKeeper for Kafka
+zookeeper:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# ============================================
+# Confluent Schema Registry
+# ============================================
+cp-schema-registry:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
