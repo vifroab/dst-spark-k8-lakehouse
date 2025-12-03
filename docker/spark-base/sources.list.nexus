@@ -1,0 +1,13 @@
+# APT sources configuration for on-prem Nexus proxy
+# Ubuntu 22.04 (Jammy Jellyfish)
+
+deb https://srvnexus1.dst.dk/repository/jammy jammy main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-backports main restricted universe multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security multiverse

@@ -1,0 +1,11 @@
+# This directory contains pre-downloaded JAR files for Spark.
+# Run scripts/download-jars.sh to populate this directory.
+#
+# Required JARs:
+# - hadoop-aws-3.3.4.jar
+# - aws-java-sdk-bundle-1.12.623.jar
+# - iceberg-spark-runtime-3.5_2.12-1.9.0.jar
+# - iceberg-aws-bundle-1.9.0.jar
+# - delta-spark_2.12-3.2.0.jar
+# - delta-storage-3.2.0.jar
+

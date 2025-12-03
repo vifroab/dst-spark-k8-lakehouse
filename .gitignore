@@ -1,2 +1,23 @@
 /polaris
+
+# Pre-downloaded dependencies (regenerate with scripts/download-*.sh)
+# These are large binaries that should be downloaded as needed
 *.tgz
+*.tar.gz
+*.jar
+*.DS_Store
+# But keep the spark distribution that's already committed
+docker/spark-base/spark-*.tgz
+
+# JAR files in the jars directory should be committed
+# They're small enough to track in git
+# Regenerate with: ./scripts/download-jars.sh
+
+# Ansible active inventory symlink
+ansible/inventory/active.yml
+
+# Generated zip files for IT
+*.zip
+
+# Temporary/generated files
+email-til-it.md

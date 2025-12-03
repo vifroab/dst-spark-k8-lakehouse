@@ -1,3 +1,7 @@
+# On-Prem Polaris deployment
+# Uses Nexus-proxied container images
+# To deploy: kubectl apply -f polaris-onprem.yaml
+---
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -20,15 +24,25 @@ spec:
     spec:
       containers:
       - name: polaris
-        image: apache/polaris:latest
+        # ON-PREM: Use Nexus-proxied polaris image
+        image: srvnexus1.dst.dk:18079/apache/polaris:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8181
         env:
-        # Bootstrap credentials - format: REALM,CLIENT_ID,CLIENT_SECRET
+        - name: POLARIS_MetaStore_type
+          value: "in-memory"
         - name: POLARIS_BOOTSTRAP_CREDENTIALS
           value: "POLARIS,root,s3cr3t"
-        # S3 / MinIO credentials
+        - name: polaris.readiness.ignore-severe-issues
+          value: "true"
+        # NOTE: These properties work with 0.9.0, but changed in 1.2.0+
+        - name: polaris.features.ALLOW_INSECURE_STORAGE_TYPES
+          value: "true"
+        - name: polaris.features.SUPPORTED_CATALOG_STORAGE_TYPES
+          value: "FILE,S3,GCS,AZURE"
+        # S3 / MinIO integration for Polaris itself
+        # These are used by the Polaris server when talking to S3-backed catalogs.
         - name: AWS_REGION
           value: "us-east-1"
         - name: AWS_ACCESS_KEY_ID
@@ -62,3 +76,4 @@ spec:
   - port: 8182
     targetPort: 8182
     name: management
+

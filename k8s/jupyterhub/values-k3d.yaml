@@ -1,0 +1,30 @@
+# k3d-specific JupyterHub configuration
+# Use ClusterIP service type and route through Traefik Ingress
+# This avoids port conflicts with Traefik's LoadBalancer on port 80
+
+proxy:
+  service:
+    type: ClusterIP
+
+hub:
+  baseUrl: "/"
+  config:
+    JupyterHub:
+      # Disable XSRF for local dev behind proxy
+      # This is safe for local dev but should NOT be used in production
+      tornado_settings:
+        xsrf_cookies: false
+
+singleuser:
+  storage:
+    type: none
+  networkPolicy:
+    enabled: false
+
+# Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
+prePuller:
+  hook:
+    enabled: false
+  continuous:
+    enabled: false
+
