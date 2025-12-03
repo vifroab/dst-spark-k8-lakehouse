@@ -53,7 +53,7 @@ set -e
 # Helm repository URL (Nexus Helm proxy)
 # Online: not needed for direct Helm repo access
 # On-prem: set to your Nexus Helm proxy
-: "${HELM_REPO_URL:=https://srvnexus1.dst.dk/repository/helm-proxy}"
+: "${HELM_REPO_URL:=https://srvnexus1.dst.dk:/repository/}"
 
 # Maven repository URL (Nexus Maven proxy) - for JAR verification
 # For flat JAR storage (just filenames): https://srvnexus1.dst.dk/repository/apache-spark/spark-jars
@@ -78,7 +78,7 @@ DOCKER_IMAGES=(
     "eclipse-temurin:11-jdk-jammy"
     "busybox:1.36"
     "minio/minio:RELEASE.2024-11-07T00-52-20Z"
-    "apache/polaris:0.9.0"
+    "apache/polaris:latest"
     "jupyterhub/k8s-hub:4.3.1"
 )
 
@@ -94,7 +94,7 @@ GHCR_IMAGES=(
 # =============================================================================
 HELM_CHARTS=(
     "spark-operator"
-    "jupyterhub"
+    "jupyter-hub"
 )
 
 # =============================================================================

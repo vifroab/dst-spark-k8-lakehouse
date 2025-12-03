@@ -102,13 +102,24 @@
       register: helm_repo_update
       failed_when: false
 
-    - name: Install or upgrade Spark Operator (dev)
+    - name: Install or upgrade Spark Operator (dev - internet)
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator
           --namespace {{ spark_operator_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
           -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
+      when: environment_name | default('internet') == 'internet'
+
+    - name: Install or upgrade Spark Operator (dev - onprem)
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator
+          --namespace {{ spark_operator_namespace }} --create-namespace
+          -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
+          -f {{ repo_root }}/k8s/spark-operator/values-onprem.yaml
+          -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
+      when: environment_name | default('internet') == 'onprem'
 
     - name: Install or upgrade JupyterHub (dev - internet with k3d)
       ansible.builtin.command:
@@ -169,9 +180,15 @@
       ansible.builtin.command:
         cmd: "kubectl delete job polaris-bootstrap-catalog -n polaris --ignore-not-found"
 
-    - name: Bootstrap Polaris S3-backed catalog (idempotent)
+    - name: Bootstrap Polaris S3-backed catalog (internet)
       ansible.builtin.command:
         cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris-bootstrap.yaml"
+      when: environment_name | default('internet') == 'internet'
+
+    - name: Bootstrap Polaris S3-backed catalog (onprem)
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris-bootstrap-onprem.yaml"
+      when: environment_name | default('internet') == 'onprem'
 
     - name: Create spark-sa ServiceAccount in jhub-dev
       ansible.builtin.command:

@@ -5,13 +5,13 @@
 hub:
   image:
     # ON-PREM: Use Nexus-proxied JupyterHub hub image
-    name: srvnexus1:80888/jupyterhub/k8s-hub
+    name: srvnexus1.dst.dk:18079/jupyterhub/k8s-hub
     tag: 4.3.1
 
 singleuser:
   image:
     # ON-PREM: Use Nexus-proxied spark-notebook image
-    name: srvnexus1:80888/statkube/spark-notebook
+    name: srvnexus1.dst.dk:18079/statkube/spark-notebook
     tag: spark3.5.3-py3.12-1
     pullPolicy: IfNotPresent
 
@@ -25,7 +25,7 @@ prePuller:
     enabled: false
     image:
       # ON-PREM: Pre-puller image (if enabled)
-      name: srvnexus1:80888/jupyterhub/k8s-image-awaiter
+      name: srvnexus1.dst.dk:18079/jupyterhub/k8s-image-awaiter
       tag: 4.3.1
   continuous:
     enabled: false

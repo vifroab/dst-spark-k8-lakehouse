@@ -20,24 +20,15 @@ spec:
     spec:
       containers:
       - name: polaris
-        image: apache/polaris:0.9.0
+        image: apache/polaris:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8181
         env:
-        - name: POLARIS_MetaStore_type
-          value: "in-memory"
+        # Bootstrap credentials - format: REALM,CLIENT_ID,CLIENT_SECRET
         - name: POLARIS_BOOTSTRAP_CREDENTIALS
           value: "POLARIS,root,s3cr3t"
-        - name: polaris.readiness.ignore-severe-issues
-          value: "true"
-        # NOTE: These properties work with 0.9.0, but changed in 1.2.0+
-        - name: polaris.features.ALLOW_INSECURE_STORAGE_TYPES
-          value: "true"
-        - name: polaris.features.SUPPORTED_CATALOG_STORAGE_TYPES
-          value: "FILE,S3,GCS,AZURE"
-        # S3 / MinIO integration for Polaris itself
-        # These are used by the Polaris server when talking to S3-backed catalogs.
+        # S3 / MinIO credentials
         - name: AWS_REGION
           value: "us-east-1"
         - name: AWS_ACCESS_KEY_ID

@@ -1,0 +1,99 @@
+# On-Prem Polaris bootstrap job
+# Uses Nexus-proxied container images
+# To deploy: kubectl apply -f polaris-bootstrap-onprem.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap-catalog
+  namespace: polaris
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: polaris-bootstrap
+          # ON-PREM: Use Nexus-proxied busybox image (no package install needed)
+          image: srvnexus1.dst.dk:18079/busybox:1.36
+          env:
+            - name: CLIENT_ID
+              value: "root"
+            - name: CLIENT_SECRET
+              value: "s3cr3t"
+            # Base location for the S3-backed Polaris catalog
+            - name: STORAGE_LOCATION
+              value: "s3://polaris"
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Waiting for Polaris to become ready..."
+              # Simple readiness loop; Polaris management interface listens on 8182
+              until wget -q -O- http://polaris:8182/q/health >/dev/null 2>&1; do
+                echo "Polaris not ready yet, sleeping..."
+                sleep 3
+              done
+
+              echo "Requesting OAuth token from Polaris..."
+              # Use wget with POST data for OAuth token request
+              AUTH=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
+              TOKEN_RESPONSE=$(wget -q -O- \
+                --header="Authorization: Basic ${AUTH}" \
+                --header="Polaris-Realm: POLARIS" \
+                --post-data="grant_type=client_credentials&scope=PRINCIPAL_ROLE:ALL" \
+                http://polaris:8181/api/catalog/v1/oauth/tokens)
+
+              # Extract access_token using sed (no jq needed)
+              TOKEN=$(echo "${TOKEN_RESPONSE}" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+
+              if [ -z "${TOKEN}" ] || [ "${TOKEN}" = "${TOKEN_RESPONSE}" ]; then
+                echo "Failed to obtain access token from Polaris."
+                echo "Response: ${TOKEN_RESPONSE}"
+                exit 1
+              fi
+
+              echo "Creating S3-backed Polaris catalog named 'polaris' with base location ${STORAGE_LOCATION} ..."
+              cat <<EOF >/tmp/catalog-payload.json
+              {
+                "catalog": {
+                  "name": "polaris",
+                  "type": "INTERNAL",
+                  "readOnly": false,
+                  "properties": {
+                    "default-base-location": "${STORAGE_LOCATION}"
+                  },
+                  "storageConfigInfo": {
+                    "storageType": "S3",
+                    "endpoint": "http://minio.minio.svc:9000",
+                    "endpointInternal": "http://minio.minio.svc:9000",
+                    "pathStyleAccess": true
+                  }
+                }
+              }
+              EOF
+
+              # Use wget to POST the catalog creation request
+              HTTP_RESPONSE=$(wget -q -O- -S \
+                --header="Authorization: Bearer ${TOKEN}" \
+                --header="Polaris-Realm: POLARIS" \
+                --header="Accept: application/json" \
+                --header="Content-Type: application/json" \
+                --post-file=/tmp/catalog-payload.json \
+                http://polaris:8181/api/management/v1/catalogs 2>&1) || true
+
+              echo "Polaris catalog create response: ${HTTP_RESPONSE}"
+
+              # Check for success (201 created) or already exists (409)
+              if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
+                echo "Polaris S3-backed catalog created successfully."
+              elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
+                echo "Polaris catalog already exists (409) - this is fine."
+              elif echo "${HTTP_RESPONSE}" | grep -q '"name":"polaris"'; then
+                echo "Polaris S3-backed catalog bootstrap complete."
+              else
+                echo "Unexpected response when creating catalog."
+                # Don't fail - catalog might already exist
+              fi
+
+              echo "Polaris S3-backed catalog bootstrap complete."

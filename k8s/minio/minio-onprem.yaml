@@ -53,7 +53,7 @@ spec:
       initContainers:
       - name: init-buckets
         # ON-PREM: Use Nexus-proxied busybox image
-        image: srvnexus1:80888/busybox:1.36
+        image: srvnexus1.dst.dk:18079/busybox:1.36
         command: ["sh", "-c", "mkdir -p /data/polaris && ls -R /data"]
         volumeMounts:
         - name: data
@@ -62,7 +62,7 @@ spec:
       containers:
       - name: minio
         # ON-PREM: Use Nexus-proxied minio image
-        image: srvnexus1:80888/minio/minio:RELEASE.2024-11-07T00-52-20Z
+        image: srvnexus1.dst.dk:18079/minio/minio:RELEASE.2024-11-07T00-52-20Z
         args:
         - server
         - /data

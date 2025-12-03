@@ -25,7 +25,7 @@ spec:
       containers:
       - name: polaris
         # ON-PREM: Use Nexus-proxied polaris image
-        image: srvnexus1:80888/apache/polaris:0.9.0
+        image: srvnexus1.dst.dk:18079/apache/polaris:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8181
