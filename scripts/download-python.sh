@@ -61,22 +61,22 @@ if [[ "${USE_NEXUS}" == "true" ]]; then
 else
     echo ""
     echo "Mode: Internet (direct download)"
-    echo ""
+echo ""
     
-    echo "Downloading Python ${PYTHON_VERSION} source..."
-    curl -LO "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
+echo "Downloading Python ${PYTHON_VERSION} source..."
+curl -LO "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
     
     echo ""
     echo "Downloading Spark ${SPARK_VERSION}..."
     curl -LO "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz"
-    
-    echo ""
-    echo "Downloading uv binary (linux-x86_64 for amd64 builds)..."
-    curl -LO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz"
-    
-    echo ""
-    echo "Downloading uv binary (linux-aarch64 for arm64 builds)..."
-    curl -LO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-aarch64-unknown-linux-gnu.tar.gz"
+
+echo ""
+echo "Downloading uv binary (linux-x86_64 for amd64 builds)..."
+curl -LO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz"
+
+echo ""
+echo "Downloading uv binary (linux-aarch64 for arm64 builds)..."
+curl -LO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-aarch64-unknown-linux-gnu.tar.gz"
 fi
 
 echo ""

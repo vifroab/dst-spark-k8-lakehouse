@@ -1,27 +1,11 @@
-# Traefik Middleware for JupyterHub headers
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: jupyterhub-headers
-  namespace: jhub-dev
-spec:
-  headers:
-    customRequestHeaders:
-      X-Forwarded-Proto: "http"
-    customResponseHeaders:
-      X-Frame-Options: "SAMEORIGIN"
----
-# Ingress for JupyterHub in k3d (routes through Traefik)
-# This allows JupyterHub to be accessed at http://localhost:8080/
+# Simplified Ingress for JupyterHub in k3d (no Traefik CRDs needed)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: jupyterhub
   namespace: jhub-dev
   annotations:
-    # Traefik annotations
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.middlewares: jhub-dev-jupyterhub-headers@kubernetescrd
 spec:
   rules:
   - http:
@@ -33,4 +17,3 @@ spec:
             name: proxy-public
             port:
               number: 80
-
