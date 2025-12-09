@@ -18,6 +18,18 @@ singleuser:
 proxy:
   service:
     type: NodePort
+  chp:
+    image:
+      # ON-PREM: Override configurable-http-proxy image
+      # Original: quay.io/jupyterhub/configurable-http-proxy:5.1.0
+      name: srvnexus1.dst.dk:18079/jupyterhub/configurable-http-proxy
+      tag: "5.1.0"
+
+# Disable user-scheduler to avoid registry.k8s.io dependency
+# Original image: registry.k8s.io/kube-scheduler
+scheduling:
+  userScheduler:
+    enabled: false
 
 # Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
 prePuller:
