@@ -1,0 +1,33 @@
+# DataHub Helm Chart - Development Configuration
+# Layer on top of values-base.yaml for local k3d development
+
+# Namespace for DataHub deployment
+# Note: Helm --namespace flag handles this, but documenting here
+
+# Dev-specific GMS settings
+datahub-gms:
+  # Use ClusterIP for internal access
+  service:
+    type: ClusterIP
+
+datahub-frontend:
+  # Use ClusterIP, access via Ingress or port-forward
+  service:
+    type: ClusterIP
+
+# Reduced storage for dev
+mysql:
+  primary:
+    persistence:
+      size: 1Gi
+
+elasticsearch:
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 1Gi
+
+kafka:
+  persistence:
+    size: 1Gi
+

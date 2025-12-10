@@ -1,0 +1,166 @@
+# DataHub Helm Chart - Base Configuration
+# REQUIRES: datahub-prerequisites chart installed first with release name "prerequisites"
+# Ref: https://github.com/datahub-project/datahub-helm
+
+# ============================================
+# Global Configuration
+# ============================================
+global:
+  graph_service_impl: elasticsearch
+  datahub_analytics_enabled: false
+  
+  # Disable authentication for dev environment
+  datahub:
+    metadata_service_authentication:
+      enabled: false
+  
+  elasticsearch:
+    host: "elasticsearch-master"
+    port: "9200"
+    skipcheck: "false"
+    
+  kafka:
+    bootstrap:
+      server: "prerequisites-kafka:9092"
+    schemaregistry:
+      url: "http://prerequisites-cp-schema-registry:8081"
+      
+  sql:
+    datasource:
+      host: "prerequisites-mysql:3306"
+      hostForMysqlClient: "prerequisites-mysql"
+      port: "3306"
+      url: "jdbc:mysql://prerequisites-mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
+      driver: "com.mysql.cj.jdbc.Driver"
+      username: "root"
+      password:
+        secretRef: "mysql-secrets"
+        secretKey: "mysql-root-password"
+
+# ============================================
+# DataHub Core Services
+# ============================================
+
+datahub-gms:
+  enabled: true
+  image:
+    repository: acryldata/datahub-gms
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  # More time to start
+  livenessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    failureThreshold: 10
+  readinessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    failureThreshold: 10
+
+datahub-frontend:
+  enabled: true
+  image:
+    repository: acryldata/datahub-frontend-react
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  # Disable authentication for dev
+  extraEnvs:
+    - name: AUTH_OIDC_ENABLED
+      value: "false"
+
+datahub-mae-consumer:
+  enabled: true
+  image:
+    repository: acryldata/datahub-mae-consumer
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+datahub-mce-consumer:
+  enabled: true
+  image:
+    repository: acryldata/datahub-mce-consumer
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# ============================================
+# Setup Jobs
+# ============================================
+
+elasticsearchSetupJob:
+  enabled: true
+  image:
+    repository: acryldata/datahub-elasticsearch-setup
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+mysqlSetupJob:
+  enabled: true
+  image:
+    repository: acryldata/datahub-mysql-setup
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+kafkaSetupJob:
+  enabled: true
+  image:
+    repository: acryldata/datahub-kafka-setup
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+datahubSystemUpdate:
+  enabled: true
+  image:
+    repository: acryldata/datahub-upgrade
+    pullPolicy: IfNotPresent
+
+# ============================================
+# Optional Components - Disabled for minimal setup
+# ============================================
+
+acryl-datahub-actions:
+  enabled: false
+
+datahub-ingestion-cron:
+  enabled: false

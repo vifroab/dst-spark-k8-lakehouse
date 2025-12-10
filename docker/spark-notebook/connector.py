@@ -15,13 +15,17 @@ def get_driver_ip():
         return "127.0.0.1"
 
 
-def create_spark_session(app_name="spark-k8s-app"):
+def create_spark_session(app_name="spark-k8s-app", enable_lineage=False):
     """
     Creates a SparkSession configured for:
     - Kubernetes (Spark on K8s)
     - Polaris (Iceberg Catalog)
     - MinIO (S3 Storage)
     - Delta Lake
+
+    Args:
+        app_name: Name for the Spark application
+        enable_lineage: If True, enables OpenLineage/DataHub integration (requires DataHub running)
     """
     driver_ip = get_driver_ip()
     print(f"Initializing Spark Session '{app_name}' with Driver IP: {driver_ip}")
@@ -36,6 +40,10 @@ def create_spark_session(app_name="spark-k8s-app"):
     polaris_uri = "http://polaris.polaris.svc:8181/api/catalog"
     polaris_warehouse = "polaris"
     polaris_token_uri = "http://polaris.polaris.svc:8181/api/catalog/v1/oauth/tokens"
+
+    # DataHub OpenLineage Config (for lineage tracking)
+    datahub_gms_url = "http://datahub-datahub-gms.datahub.svc:8080"
+    openlineage_namespace = "spark-k8s-hub"
 
     # Java Options to pass system properties to AWS SDK (crucial for Iceberg)
     # We also include Java 17+ module opens just in case
@@ -121,7 +129,24 @@ def create_spark_session(app_name="spark-k8s-app"):
         .config("spark.executorEnv.AWS_ACCESS_KEY_ID", access_key)
         .config("spark.executorEnv.AWS_SECRET_ACCESS_KEY", secret_key)
         .config("spark.executorEnv.AWS_REGION", region)
-        .getOrCreate()
     )
 
-    return spark
+    # --- OpenLineage Configuration (DataHub Lineage) ---
+    # Only enable if explicitly requested (requires DataHub running)
+    if enable_lineage:
+        spark = (
+            spark.config("spark.openlineage.transport.type", "http")
+            .config(
+                "spark.openlineage.transport.url",
+                f"{datahub_gms_url}/openapi/openlineage/",
+            )
+            .config("spark.openlineage.namespace", openlineage_namespace)
+            .config("spark.openlineage.parentJobNamespace", openlineage_namespace)
+            .config("spark.openlineage.parentJobName", app_name)
+            .config(
+                "spark.extraListeners",
+                "io.openlineage.spark.agent.OpenLineageSparkListener",
+            )
+        )
+
+    return spark.getOrCreate()

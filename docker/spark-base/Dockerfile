@@ -18,9 +18,9 @@ ENV PATH="${JAVA_HOME}/bin:/usr/local/python/bin:${SPARK_HOME}/bin:${SPARK_HOME}
 # ============================================
 # Configure APT sources for on-prem
 # ============================================
-# For air-gapped/on-prem deployment, this copies Nexus APT proxy config
-# Comment out for internet builds
-COPY sources.list.nexus /etc/apt/sources.list
+# For air-gapped/on-prem deployment, uncomment this line:
+# COPY sources.list.nexus /etc/apt/sources.list
+# For internet builds (default), leave it commented out
 
 # Install build dependencies for Python and runtime dependencies
 RUN apt-get update && \

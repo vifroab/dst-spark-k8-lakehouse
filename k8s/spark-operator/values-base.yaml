@@ -1,13 +1,22 @@
+# Base Spark Operator values (for chart version 1.x)
+# Works for both internet and on-prem deployments
+# On-prem: use with values-onprem.yaml to override image registry
+---
 sparkJobNamespace: default
 
-enableWebhook: true
-
-rbac:
-  create: true
+webhook:
+  enable: true
 
 serviceAccounts:
   spark:
     create: true
-    name: spark-sa
+  sparkoperator:
+    create: true
 
+controllerThreads: 10
+resyncInterval: 30
 
+# Security context for chart 1.x
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0

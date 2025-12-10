@@ -84,6 +84,20 @@ spec:
                 exit 1
               fi
 
+              echo "Granting CATALOG_MANAGE_CONTENT to catalog_admin role..."
+              # This grant allows reading table metadata (needed for DataHub ingestion)
+              HTTP_CODE=$(curl -s -o /tmp/grant-response.json -w "%{http_code}" \
+                -X PUT \
+                -H "Authorization: Bearer ${TOKEN}" \
+                -H "Polaris-Realm: POLARIS" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                "http://polaris:8181/api/management/v1/catalogs/polaris/catalog-roles/catalog_admin/grants" \
+                -d '{"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}' || true)
+              
+              echo "Grant HTTP status: ${HTTP_CODE}"
+              cat /tmp/grant-response.json 2>/dev/null || true
+
               echo "Polaris S3-backed catalog bootstrap complete."
 
 

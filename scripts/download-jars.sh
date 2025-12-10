@@ -91,6 +91,11 @@ download_jar "io/delta/delta-spark_2.12/${DELTA_VERSION}/delta-spark_2.12-${DELT
 download_jar "io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar"
 
 echo ""
+echo "Downloading OpenLineage Spark JAR (for DataHub lineage)..."
+OPENLINEAGE_VERSION=1.24.2
+download_jar "io/openlineage/openlineage-spark_2.12/${OPENLINEAGE_VERSION}/openlineage-spark_2.12-${OPENLINEAGE_VERSION}.jar"
+
+echo ""
 echo "Downloaded JARs:"
 ls -la "${JARS_DIR}"
 

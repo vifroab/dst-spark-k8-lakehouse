@@ -1,11 +1,7 @@
-sparkJobNamespace: default
-
+# Dev environment Spark Operator values (for chart version 2.x)
+# Usage: helm ... -f values-base.yaml -f values-dev.yaml
+---
 fullnameOverride: spark-operator
 
 podLabels:
   env: dev
-
-webhook:
-  enable: true
-
-
