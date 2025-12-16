@@ -26,7 +26,11 @@
     # Local dev: runtime-mount LER-U into k3d nodes
     # ============================================
     leru_mount_enabled: true
-    leru_host_path: "/Users/vifro/Downloads/LER-U_redesign"
+    # IMPORTANT (macOS): Docker must be allowed to mount this host path.
+    # If you see "operation not permitted" from Docker, either:
+    # - Move LER-U_redesign under /Users/vifro/Projects (recommended), or
+    # - Add /Users/vifro/Downloads to Docker Desktop -> Settings -> Resources -> File Sharing
+    leru_host_path: "/Users/vifro/Projects/LER-U_redesign"
     leru_node_path: "/mnt/leru"
     # Recreate the cluster when runtime-mounting host paths (ensures volume mount is present)
     k3d_recreate_cluster: "{{ leru_mount_enabled | bool }}"
