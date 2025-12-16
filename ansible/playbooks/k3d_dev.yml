@@ -94,7 +94,7 @@
       ansible.builtin.command:
         cmd: >
           k3d kubeconfig merge {{ k3d_cluster_name }}
-          --kubeconfig-update-default
+          --kubeconfig-merge-default
           --kubeconfig-switch-context
       changed_when: false
 
