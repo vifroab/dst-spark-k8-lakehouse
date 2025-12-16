@@ -5,6 +5,9 @@ ARG BASE_IMAGE=eclipse-temurin:11-jdk-jammy
 
 FROM ${BASE_IMAGE}
 
+ARG USE_NEXUS_APT=false
+ARG UV_INDEX_URL=https://pypi.org/simple
+
 ENV DEBIAN_FRONTEND=noninteractive \
     SPARK_VERSION=3.5.3 \
     SPARK_HOME=/opt/spark \
@@ -18,12 +21,15 @@ ENV PATH="${JAVA_HOME}/bin:/usr/local/python/bin:${SPARK_HOME}/bin:${SPARK_HOME}
 # ============================================
 # Configure APT sources for on-prem (optional)
 # ============================================
-# Uncomment the following lines for air-gapped/on-prem deployment:
-COPY sources.list.nexus /etc/apt/sources.list
+# On-prem: build with --build-arg USE_NEXUS_APT=true
+COPY sources.list.nexus /tmp/sources.list.nexus
 
 # Install build dependencies for Python and runtime dependencies
-# Note: In on-prem environments, uncomment the COPY line above to use Nexus APT proxy
-RUN apt-get update && \
+# Note: When USE_NEXUS_APT=true we overwrite /etc/apt/sources.list to use the Nexus APT proxy.
+RUN if [ "${USE_NEXUS_APT}" = "true" ]; then \
+        cp /tmp/sources.list.nexus /etc/apt/sources.list; \
+    fi && \
+    apt-get update && \
     apt-get install -y --no-install-recommends --fix-missing \
       curl \
       wget \
@@ -115,7 +121,7 @@ COPY jars/*.jar ${SPARK_HOME}/jars/
 # ============================================
 COPY requirements.txt /tmp/requirements.txt
 
-ENV UV_INDEX_URL=https://srvnexus1.dst.dk/repository/pypi/simple
+ENV UV_INDEX_URL=${UV_INDEX_URL}
 ENV UV_PYTHON="/usr/local/python/bin/python3"
 
 RUN UV_PYTHON="${UV_PYTHON}" uv pip install --system --require-hashes -r /tmp/requirements.txt

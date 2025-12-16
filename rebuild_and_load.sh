@@ -18,7 +18,11 @@ fi
 
 # Build images
 echo "Building spark-base image..."
-docker build -t statkube/spark-base:$IMAGE_TAG -f docker/spark-base/Dockerfile docker/spark-base
+docker build \
+  -t statkube/spark-base:$IMAGE_TAG \
+  --build-arg USE_NEXUS_APT=false \
+  --build-arg UV_INDEX_URL=https://pypi.org/simple \
+  -f docker/spark-base/Dockerfile docker/spark-base
 
 echo ""
 echo "Building spark-notebook image..."
