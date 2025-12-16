@@ -50,10 +50,10 @@
         msg: |
           Environment: {{ environment_name | default('internet (default)') }}
           Cluster Type: k3d (k3s in Docker)
-          Spark Operator Helm Repo: {{ helm_spark_operator_repo_url }}
-          JupyterHub Helm Repo: {{ helm_jupyterhub_repo_url }}
-          Spark Base Image: {{ spark_base_image }}
-          Spark Notebook Image: {{ spark_notebook_image }}
+          Spark Operator Helm Repo: {{ _helm_spark_operator_repo_url }}
+          JupyterHub Helm Repo: {{ _helm_jupyterhub_repo_url }}
+          Spark Base Image: {{ _spark_base_image }}
+          Spark Notebook Image: {{ _spark_notebook_image }}
           Port Mappings: {{ k3d_http_port }}, {{ k3d_https_port }}
 
     - name: Check if k3d cluster already exists
