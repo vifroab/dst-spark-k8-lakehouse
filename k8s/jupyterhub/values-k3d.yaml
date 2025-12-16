@@ -20,13 +20,14 @@ singleuser:
     type: none
     # Runtime-mount local LER-U folder into notebook pods (k3d dev)
     # NOTE: k3d nodes must be created with a matching volume mount to /mnt/leru
+    # Use map-form (not list) to match the chart default type and avoid Helm merge warnings.
     extraVolumes:
-      - name: leru
+      leru:
         hostPath:
           path: /mnt/leru
           type: Directory
     extraVolumeMounts:
-      - name: leru
+      leru:
         mountPath: /opt/leru
         readOnly: false
   networkPolicy:

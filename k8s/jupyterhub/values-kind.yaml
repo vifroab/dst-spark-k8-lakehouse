@@ -3,13 +3,14 @@
 singleuser:
   storage:
     # NOTE: kind nodes must be created with a matching extraMount to /mnt/leru
+    # Use map-form (not list) to match the chart default type and avoid Helm merge warnings.
     extraVolumes:
-      - name: leru
+      leru:
         hostPath:
           path: /mnt/leru
           type: Directory
     extraVolumeMounts:
-      - name: leru
+      leru:
         mountPath: /opt/leru
         readOnly: false
   extraEnv:
