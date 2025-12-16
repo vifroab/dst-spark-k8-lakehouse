@@ -46,6 +46,30 @@ What it does:
 - Deploys JupyterHub using:
   - `k8s/jupyterhub/values-base.yaml`
   - `k8s/jupyterhub/values-dev.yaml`
+  - `k8s/jupyterhub/values-kind.yaml` (local dev runtime mount)
+
+### 2a. Runtime-mount LER-U into notebook pods (local dev)
+
+For local development, the playbooks mount your host folder:
+
+- Host path: `/Users/vifro/Downloads/LER-U_redesign`
+- Node path: `/mnt/leru`
+- Notebook container path: `/opt/leru`
+- Python import path: `PYTHONPATH=/opt/leru`
+
+This makes LER-U importable in notebooks, e.g.:
+
+```python
+from utilities.spark_connector import SparkConnector
+connector = SparkConnector(size="XS", force_new=True)
+spark = connector.session
+print(connector.env)
+```
+
+Notes:
+- If your k3d/kind cluster already existed before this change, you must recreate it so the node mount exists.
+  - k3d: `k3d cluster delete spark-cluster` then rerun `ansible-playbook ansible/playbooks/k3d_dev.yml`
+  - kind: `kind delete cluster --name spark-cluster` then rerun `ansible-playbook ansible/playbooks/kind_dev.yml`
 
 ### 3. Access JupyterHub and run a Spark job
 
