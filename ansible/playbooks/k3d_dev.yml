@@ -28,6 +28,8 @@
     leru_mount_enabled: true
     leru_host_path: "/Users/vifro/Downloads/LER-U_redesign"
     leru_node_path: "/mnt/leru"
+    # Recreate the cluster when runtime-mounting host paths (ensures volume mount is present)
+    k3d_recreate_cluster: "{{ leru_mount_enabled | bool }}"
 
     # ============================================
     # Default values for standalone execution
@@ -63,6 +65,14 @@
       changed_when: false
       failed_when: false
 
+    - name: Recreate k3d cluster for local dev runtime mounts (delete first)
+      ansible.builtin.command:
+        cmd: "k3d cluster delete {{ k3d_cluster_name }}"
+      register: k3d_delete
+      failed_when: false
+      changed_when: k3d_delete.rc == 0
+      when: k3d_recreate_cluster | bool
+
     - name: Create k3d cluster with port mappings
       ansible.builtin.command:
         cmd: >
@@ -74,7 +84,7 @@
           --volume {{ leru_host_path }}:{{ leru_node_path }}@all
           {% endif %}
       register: k3d_create
-      when: k3d_cluster_name not in (k3d_list.stdout | default(''))
+      when: (k3d_recreate_cluster | bool) or (k3d_cluster_name not in (k3d_list.stdout | default('')))
       failed_when: k3d_create.rc not in [0, 1]
       changed_when: k3d_create.rc == 0
 
