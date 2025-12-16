@@ -17,35 +17,62 @@ hub:
       service_account: spark-sa
       automount_service_account_token: true
   extraConfig:
-    10-require-minio-credentials: |
-      # Require users to provide MINIO_USER + MINIO_PASSWORD at spawn time.
-      # The selected JupyterHub profile decides the environment routing (DST_BUCKET / POLARIS_WAREHOUSE).
+    10-env-and-minio-credentials: |
+      # Spawn-time form with:
+      # - Environment selection (sbx/dev/test/prod) controlling DST_BUCKET + POLARIS_WAREHOUSE
+      # - MinIO user credentials (MINIO_USER + MINIO_PASSWORD)
       def options_form(spawner):
           return """
-          <label for="minio_user">MinIO username (required)</label>
+          <label for="dst_env">Environment (required)</label>
+          <select class="form-control" name="dst_env" required>
+            <option value="sbx" selected>sbx (sandbox)</option>
+            <option value="dev">dev</option>
+            <option value="test">test</option>
+            <option value="prod">prod</option>
+          </select>
+
+          <label for="minio_user" style="margin-top: 0.75rem;">MinIO username (required)</label>
           <input class="form-control" type="text" name="minio_user" placeholder="Enter your MinIO username" required />
+
           <label for="minio_password" style="margin-top: 0.5rem;">MinIO password (required)</label>
           <input class="form-control" type="password" name="minio_password" placeholder="Enter your MinIO password" required />
-          <p class="help-block">
-            Your selected environment (sbx/dev/test/prod) selects the bucket + Polaris catalog.
-            Your MinIO credentials control access via MinIO policies.
+
+          <p class="help-block" style="margin-top: 0.75rem;">
+            Environment decides bucket + Polaris catalog (sbx/dev/test/prod).
+            Your MinIO credentials decide what you can access via MinIO policies.
           </p>
           """
 
       def options_from_form(formdata):
+          dst_env = "sbx"
           user = ""
           pw = ""
+
+          if "dst_env" in formdata and formdata["dst_env"]:
+              dst_env = formdata["dst_env"][0] or "sbx"
           if "minio_user" in formdata and formdata["minio_user"]:
               user = formdata["minio_user"][0]
           if "minio_password" in formdata and formdata["minio_password"]:
               pw = formdata["minio_password"][0]
-          return {"minio_user": user, "minio_password": pw}
+
+          return {"dst_env": dst_env, "minio_user": user, "minio_password": pw}
 
       async def pre_spawn_hook(spawner):
-          user = (spawner.user_options or {}).get("minio_user") or ""
-          pw = (spawner.user_options or {}).get("minio_password") or ""
+          opts = spawner.user_options or {}
+          dst_env = (opts.get("dst_env") or "sbx").strip()
+          user = (opts.get("minio_user") or "").strip()
+          pw = (opts.get("minio_password") or "").strip()
+
+          if dst_env not in ("sbx", "dev", "test", "prod"):
+              raise Exception("Invalid environment selection.")
           if not user or not pw:
               raise Exception("MINIO_USER and MINIO_PASSWORD are required to start your server.")
+
+          spawner.environment["DST_ENV"] = dst_env
+          spawner.environment["DST_BUCKET"] = f"s3a://{dst_env}"
+          spawner.environment["POLARIS_WAREHOUSE"] = dst_env
+          spawner.environment.setdefault("MINIO_HOSTNAME", "minio.minio.svc")
+
           spawner.environment["MINIO_USER"] = user
           spawner.environment["MINIO_PASSWORD"] = pw
 
