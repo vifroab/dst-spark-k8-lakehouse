@@ -1,0 +1,52 @@
+# On-Prem JupyterHub values
+# Uses Nexus-proxied container images
+# Usage: helm upgrade --install jhub jupyterhub/jupyterhub -f values-base.yaml -f values-onprem.yaml
+---
+hub:
+  image:
+    # ON-PREM: Use Nexus-proxied JupyterHub hub image
+    name: srvnexus1.dst.dk:18079/jupyterhub/k8s-hub
+    tag: 4.3.1
+
+singleuser:
+  image:
+    # ON-PREM: Use Nexus-proxied spark-notebook image
+    name: srvnexus1.dst.dk:18079/statkube/spark-notebook
+    tag: spark3.5.3-py3.12-1
+    pullPolicy: IfNotPresent
+  # Network tools image for user pods
+  networkTools:
+    image:
+      name: srvnexus1.dst.dk:18079/jupyterhub/k8s-network-tools
+      tag: "4.3.1"
+  # Environment variable for Spark executor image (used by connector.py)
+  extraEnv:
+    SPARK_EXECUTOR_IMAGE: "srvnexus1.dst.dk:18079/statkube/spark-notebook:spark3.5.3-py3.12-1"
+
+proxy:
+  service:
+    type: NodePort
+  chp:
+    image:
+      # ON-PREM: Override configurable-http-proxy image
+      # Original: quay.io/jupyterhub/configurable-http-proxy:5.1.0
+      name: srvnexus1.dst.dk:18079/jupyterhub/configurable-http-proxy
+      tag: "5.1.0"
+
+# Disable user-scheduler to avoid registry.k8s.io dependency
+# Original image: registry.k8s.io/kube-scheduler
+scheduling:
+  userScheduler:
+    enabled: false
+
+# Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
+prePuller:
+  hook:
+    enabled: false
+    image:
+      # ON-PREM: Pre-puller image (if enabled)
+      name: srvnexus1.dst.dk:18079/jupyterhub/k8s-image-awaiter
+      tag: 4.3.1
+  continuous:
+    enabled: false
+

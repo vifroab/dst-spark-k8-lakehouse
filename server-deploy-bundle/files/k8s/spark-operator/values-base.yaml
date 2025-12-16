@@ -1,0 +1,30 @@
+# Base Spark Operator values (for chart version 1.x)
+# Works for both internet and on-prem deployments
+# On-prem: use with values-onprem.yaml to override image registry
+---
+sparkJobNamespace: default
+
+webhook:
+  enable: true
+  # Fix for read-only filesystem error
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  volumeMounts:
+    - name: tmp
+      # spark-operator webhook writes generated certs here
+      mountPath: /etc/k8s-webhook-server/serving-certs
+
+serviceAccounts:
+  spark:
+    create: true
+  sparkoperator:
+    create: true
+
+controllerThreads: 10
+resyncInterval: 30
+
+# Security context for chart 1.x
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0

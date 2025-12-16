@@ -1,0 +1,25 @@
+# k3d on-prem JupyterHub configuration
+# - No hostPath mounts (server deploy)
+# - Persistent home enabled (default chart dynamic PVC)
+proxy:
+  service:
+    type: ClusterIP
+
+hub:
+  baseUrl: "/"
+  config:
+    JupyterHub:
+      tornado_settings:
+        xsrf_cookies: false
+
+singleuser:
+  # Keep networkPolicy off for simple local k3d networking
+  networkPolicy:
+    enabled: false
+
+  # IMPORTANT: do NOT set singleuser.storage.type: none here.
+  # That would disable persistence and users would lose Azure DevOps clones on restart.
+  storage:
+    type: dynamic
+
+

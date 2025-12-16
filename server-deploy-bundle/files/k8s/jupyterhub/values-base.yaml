@@ -1,0 +1,115 @@
+hub:
+  image:
+    name: jupyterhub/k8s-hub
+    tag: 4.3.1
+  config:
+    JupyterHub:
+      authenticator_class: dummy
+    DummyAuthenticator:
+      password: "test"
+    Authenticator:
+      admin_users:
+        - user
+    KubeSpawner:
+      uid: 0
+      gid: 0
+      fs_gid: 0
+      service_account: spark-sa
+      automount_service_account_token: true
+  extraConfig:
+    10-env-and-minio-credentials: |
+      # Spawn-time form with:
+      # - Environment selection (sbx/dev/test/prod) controlling DST_BUCKET + POLARIS_WAREHOUSE
+      # - MinIO user credentials (MINIO_USER + MINIO_PASSWORD)
+      def options_form(spawner):
+          return """
+          <label for="dst_env">Environment (required)</label>
+          <select class="form-control" name="dst_env" required>
+            <option value="sbx" selected>sbx (sandbox)</option>
+            <option value="dev">dev</option>
+            <option value="test">test</option>
+            <option value="prod">prod</option>
+          </select>
+
+          <label for="minio_user" style="margin-top: 0.75rem;">MinIO username (required)</label>
+          <input class="form-control" type="text" name="minio_user" placeholder="Enter your MinIO username" required />
+
+          <label for="minio_password" style="margin-top: 0.5rem;">MinIO password (required)</label>
+          <input class="form-control" type="password" name="minio_password" placeholder="Enter your MinIO password" required />
+
+          <p class="help-block" style="margin-top: 0.75rem;">
+            Environment decides bucket + Polaris catalog (sbx/dev/test/prod).
+            Your MinIO credentials decide what you can access via MinIO policies.
+          </p>
+          """
+
+      def options_from_form(formdata):
+          dst_env = "sbx"
+          user = ""
+          pw = ""
+
+          if "dst_env" in formdata and formdata["dst_env"]:
+              dst_env = formdata["dst_env"][0] or "sbx"
+          if "minio_user" in formdata and formdata["minio_user"]:
+              user = formdata["minio_user"][0]
+          if "minio_password" in formdata and formdata["minio_password"]:
+              pw = formdata["minio_password"][0]
+
+          return {"dst_env": dst_env, "minio_user": user, "minio_password": pw}
+
+      async def pre_spawn_hook(spawner):
+          opts = spawner.user_options or {}
+          dst_env = (opts.get("dst_env") or "sbx").strip()
+          user = (opts.get("minio_user") or "").strip()
+          pw = (opts.get("minio_password") or "").strip()
+
+          if dst_env not in ("sbx", "dev", "test", "prod"):
+              raise Exception("Invalid environment selection.")
+          if not user or not pw:
+              raise Exception("MINIO_USER and MINIO_PASSWORD are required to start your server.")
+
+          spawner.environment["DST_ENV"] = dst_env
+          spawner.environment["DST_BUCKET"] = f"s3a://{dst_env}"
+          spawner.environment["POLARIS_WAREHOUSE"] = dst_env
+          spawner.environment.setdefault("MINIO_HOSTNAME", "minio.minio.svc")
+
+          spawner.environment["MINIO_USER"] = user
+          spawner.environment["MINIO_PASSWORD"] = pw
+
+      c.KubeSpawner.options_form = options_form
+      c.KubeSpawner.options_from_form = options_from_form
+      c.KubeSpawner.pre_spawn_hook = pre_spawn_hook
+
+singleuser:
+  image:
+    name: statkube/spark-notebook
+    tag: spark3.5.3-py3.12-1
+    pullPolicy: IfNotPresent
+  cmd:
+    - jupyterhub-singleuser
+    - --allow-root
+  defaultUrl: "/lab"
+  extraEnv:
+    SPARK_HOME: "/opt/spark"
+    SPARK_MASTER: "k8s://https://kubernetes.default.svc"
+    PYSPARK_PYTHON: "python3"
+    PYSPARK_DRIVER_PYTHON: "python3"
+    # Git configuration - users can set these in their profile or admin can set defaults
+    # GIT_USER_NAME: "Your Name"
+    # GIT_USER_EMAIL: "your.email@example.com"
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            # Configure git user from environment variables if set
+            if [ -n "$GIT_USER_NAME" ]; then git config --global user.name "$GIT_USER_NAME"; fi
+            if [ -n "$GIT_USER_EMAIL" ]; then git config --global user.email "$GIT_USER_EMAIL"; fi
+
+            # Make the runtime-mounted LER-U folder easy to find in JupyterLab:
+            # it is mounted at /opt/leru, but JupyterLab's file browser starts at /home/jovyan.
+            if [ -d "/opt/leru" ] && [ ! -e "/home/jovyan/leru" ]; then
+              ln -s /opt/leru /home/jovyan/leru || true
+            fi

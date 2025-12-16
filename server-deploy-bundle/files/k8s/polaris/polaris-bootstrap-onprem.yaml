@@ -1,0 +1,104 @@
+# On-Prem Polaris bootstrap job
+# Uses Nexus-proxied container images
+# To deploy: kubectl apply -f polaris-bootstrap-onprem.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap-catalog
+  namespace: polaris
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: polaris-bootstrap
+          # ON-PREM: Use Nexus-proxied busybox image (no package install needed)
+          image: srvnexus1.dst.dk:18079/busybox:1.36
+          env:
+            - name: CLIENT_ID
+              value: "root"
+            - name: CLIENT_SECRET
+              value: "s3cr3t"
+            # Base locations for the S3-backed Polaris catalogs (buckets in MinIO)
+            - name: STORAGE_LOCATIONS
+              value: "sbx=s3://sbx,dev=s3://dev,test=s3://test,prod=s3://prod,polaris=s3://polaris"
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Waiting for Polaris to become ready..."
+              # Simple readiness loop; Polaris management interface listens on 8182
+              until wget -q -O- http://polaris:8182/q/health >/dev/null 2>&1; do
+                echo "Polaris not ready yet, sleeping..."
+                sleep 3
+              done
+
+              echo "Requesting OAuth token from Polaris..."
+              # Use wget with POST data for OAuth token request
+              AUTH=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
+              TOKEN_RESPONSE=$(wget -q -O- \
+                --header="Authorization: Basic ${AUTH}" \
+                --header="Polaris-Realm: POLARIS" \
+                --post-data="grant_type=client_credentials&scope=PRINCIPAL_ROLE:ALL" \
+                http://polaris:8181/api/catalog/v1/oauth/tokens)
+
+              # Extract access_token using sed (no jq needed)
+              TOKEN=$(echo "${TOKEN_RESPONSE}" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+
+              if [ -z "${TOKEN}" ] || [ "${TOKEN}" = "${TOKEN_RESPONSE}" ]; then
+                echo "Failed to obtain access token from Polaris."
+                echo "Response: ${TOKEN_RESPONSE}"
+                exit 1
+              fi
+
+              create_catalog () {
+                CATALOG_NAME="$1"
+                STORAGE_LOCATION="$2"
+                echo "Creating S3-backed Polaris catalog '${CATALOG_NAME}' with base location ${STORAGE_LOCATION} ..."
+
+              cat <<EOF >/tmp/catalog-payload.json
+                {
+                  "catalog": {
+                    "name": "${CATALOG_NAME}",
+                    "type": "INTERNAL",
+                    "readOnly": false,
+                    "properties": {
+                      "default-base-location": "${STORAGE_LOCATION}"
+                    },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "endpoint": "http://minio.minio.svc:9000",
+                      "endpointInternal": "http://minio.minio.svc:9000",
+                      "pathStyleAccess": true
+                    }
+                  }
+                }
+              EOF
+
+                HTTP_RESPONSE=$(wget -q -O- -S \
+                  --header="Authorization: Bearer ${TOKEN}" \
+                  --header="Polaris-Realm: POLARIS" \
+                  --header="Accept: application/json" \
+                  --header="Content-Type: application/json" \
+                  --post-file=/tmp/catalog-payload.json \
+                  http://polaris:8181/api/management/v1/catalogs 2>&1) || true
+
+                echo "Polaris catalog '${CATALOG_NAME}' create response: ${HTTP_RESPONSE}"
+                if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
+                  echo "✅ Catalog ${CATALOG_NAME} created."
+                elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
+                  echo "ℹ️ Catalog ${CATALOG_NAME} already exists (409)."
+                else
+                  echo "⚠️ Unexpected response for ${CATALOG_NAME} (continuing)."
+                fi
+              }
+
+              IFS=','; for PAIR in ${STORAGE_LOCATIONS}; do
+                NAME=$(echo "${PAIR}" | cut -d'=' -f1)
+                LOC=$(echo "${PAIR}" | cut -d'=' -f2-)
+                create_catalog "${NAME}" "${LOC}"
+              done
+
+              echo "Polaris S3-backed catalog bootstrap complete."

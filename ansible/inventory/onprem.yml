@@ -9,6 +9,10 @@ all:
   vars:
     environment_name: onprem
 
+    # k3d host port mappings (avoid collisions on servers where 8080 is already used)
+    k3d_http_port: "9080:80@loadbalancer"
+    k3d_https_port: "9443:443@loadbalancer"
+
     # ============================================
     # Docker Registry Configuration
     # ============================================

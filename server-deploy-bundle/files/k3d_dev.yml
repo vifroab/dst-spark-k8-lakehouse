@@ -23,10 +23,9 @@
     k3d_agents: 2
 
     # ============================================
-    # Runtime-mount LER-U into k3d nodes (local dev only)
+    # Local dev: runtime-mount LER-U into k3d nodes
     # ============================================
-    # On-prem/server: disable (users clone from Azure DevOps into persistent /home/jovyan)
-    leru_mount_enabled: "{{ (environment_name | default('internet')) == 'internet' }}"
+    leru_mount_enabled: true
     # IMPORTANT (macOS): Docker must be allowed to mount this host path.
     # If you see "operation not permitted" from Docker, either:
     # - Move LER-U_redesign under /Users/vifro/Projects (recommended), or
