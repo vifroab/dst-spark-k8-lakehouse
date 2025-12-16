@@ -19,9 +19,9 @@ spec:
               value: "root"
             - name: CLIENT_SECRET
               value: "s3cr3t"
-            # Base location for the S3-backed Polaris catalog
-            - name: STORAGE_LOCATION
-              value: "s3://polaris"
+            # Base locations for the S3-backed Polaris catalogs (buckets in MinIO)
+            - name: STORAGE_LOCATIONS
+              value: "sbx=s3://sbx,dev=s3://dev,test=s3://test,prod=s3://prod,polaris=s3://polaris"
           command:
             - /bin/sh
             - -c
@@ -53,47 +53,52 @@ spec:
                 exit 1
               fi
 
-              echo "Creating S3-backed Polaris catalog named 'polaris' with base location ${STORAGE_LOCATION} ..."
+              create_catalog () {
+                CATALOG_NAME="$1"
+                STORAGE_LOCATION="$2"
+                echo "Creating S3-backed Polaris catalog '${CATALOG_NAME}' with base location ${STORAGE_LOCATION} ..."
+
               cat <<EOF >/tmp/catalog-payload.json
-              {
-                "catalog": {
-                  "name": "polaris",
-                  "type": "INTERNAL",
-                  "readOnly": false,
-                  "properties": {
-                    "default-base-location": "${STORAGE_LOCATION}"
-                  },
-                  "storageConfigInfo": {
-                    "storageType": "S3",
-                    "endpoint": "http://minio.minio.svc:9000",
-                    "endpointInternal": "http://minio.minio.svc:9000",
-                    "pathStyleAccess": true
+                {
+                  "catalog": {
+                    "name": "${CATALOG_NAME}",
+                    "type": "INTERNAL",
+                    "readOnly": false,
+                    "properties": {
+                      "default-base-location": "${STORAGE_LOCATION}"
+                    },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "endpoint": "http://minio.minio.svc:9000",
+                      "endpointInternal": "http://minio.minio.svc:9000",
+                      "pathStyleAccess": true
+                    }
                   }
                 }
-              }
               EOF
 
-              # Use wget to POST the catalog creation request
-              HTTP_RESPONSE=$(wget -q -O- -S \
-                --header="Authorization: Bearer ${TOKEN}" \
-                --header="Polaris-Realm: POLARIS" \
-                --header="Accept: application/json" \
-                --header="Content-Type: application/json" \
-                --post-file=/tmp/catalog-payload.json \
-                http://polaris:8181/api/management/v1/catalogs 2>&1) || true
+                HTTP_RESPONSE=$(wget -q -O- -S \
+                  --header="Authorization: Bearer ${TOKEN}" \
+                  --header="Polaris-Realm: POLARIS" \
+                  --header="Accept: application/json" \
+                  --header="Content-Type: application/json" \
+                  --post-file=/tmp/catalog-payload.json \
+                  http://polaris:8181/api/management/v1/catalogs 2>&1) || true
 
-              echo "Polaris catalog create response: ${HTTP_RESPONSE}"
+                echo "Polaris catalog '${CATALOG_NAME}' create response: ${HTTP_RESPONSE}"
+                if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
+                  echo "✅ Catalog ${CATALOG_NAME} created."
+                elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
+                  echo "ℹ️ Catalog ${CATALOG_NAME} already exists (409)."
+                else
+                  echo "⚠️ Unexpected response for ${CATALOG_NAME} (continuing)."
+                fi
+              }
 
-              # Check for success (201 created) or already exists (409)
-              if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
-                echo "Polaris S3-backed catalog created successfully."
-              elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
-                echo "Polaris catalog already exists (409) - this is fine."
-              elif echo "${HTTP_RESPONSE}" | grep -q '"name":"polaris"'; then
-                echo "Polaris S3-backed catalog bootstrap complete."
-              else
-                echo "Unexpected response when creating catalog."
-                # Don't fail - catalog might already exist
-              fi
+              IFS=','; for PAIR in ${STORAGE_LOCATIONS}; do
+                NAME=$(echo "${PAIR}" | cut -d'=' -f1)
+                LOC=$(echo "${PAIR}" | cut -d'=' -f2-)
+                create_catalog "${NAME}" "${LOC}"
+              done
 
               echo "Polaris S3-backed catalog bootstrap complete."

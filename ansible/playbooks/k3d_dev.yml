@@ -202,7 +202,7 @@
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
           -f {{ repo_root }}/k8s/jupyterhub/values-onprem.yaml
-          -f {{ repo_root }}/k8s/jupyterhub/values-k3d.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-k3d-onprem.yaml
       when: environment_name | default('internet') == 'onprem'
 
     - name: Create JupyterHub Ingress (routes through Traefik)
