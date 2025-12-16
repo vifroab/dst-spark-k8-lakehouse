@@ -23,6 +23,13 @@
     k3d_agents: 2
 
     # ============================================
+    # Local dev: runtime-mount LER-U into k3d nodes
+    # ============================================
+    leru_mount_enabled: true
+    leru_host_path: "/Users/vifro/Downloads/LER-U_redesign"
+    leru_node_path: "/mnt/leru"
+
+    # ============================================
     # Default values for standalone execution
     # When using inventory files, these are overridden
     # ============================================
@@ -63,10 +70,25 @@
           --agents {{ k3d_agents }}
           --port {{ k3d_http_port }}
           --port {{ k3d_https_port }}
+          {% if leru_mount_enabled | bool %}
+          --volume {{ leru_host_path }}:{{ leru_node_path }}@all
+          {% endif %}
       register: k3d_create
       when: k3d_cluster_name not in (k3d_list.stdout | default(''))
       failed_when: k3d_create.rc not in [0, 1]
       changed_when: k3d_create.rc == 0
+
+    - name: Warn if k3d cluster already exists and LER-U mount is enabled
+      ansible.builtin.debug:
+        msg: |
+          ⚠️ k3d cluster '{{ k3d_cluster_name }}' already exists.
+          LER-U mount expects the node path '{{ leru_node_path }}' to be present via k3d --volume.
+          If notebooks cannot see /opt/leru, recreate the cluster:
+            k3d cluster delete {{ k3d_cluster_name }}
+            ansible-playbook ansible/playbooks/k3d_dev.yml
+      when:
+        - leru_mount_enabled | bool
+        - k3d_cluster_name in (k3d_list.stdout | default(''))
 
     - name: Use k3d cluster context
       ansible.builtin.command:

@@ -18,6 +18,14 @@
     load_images: false
 
     # ============================================
+    # Local dev: runtime-mount LER-U into kind nodes
+    # ============================================
+    leru_mount_enabled: true
+    leru_host_path: "/Users/vifro/Downloads/LER-U_redesign"
+    leru_node_path: "/mnt/leru"
+    kind_config_path: "/tmp/kind-{{ kind_cluster_name }}-config.yaml"
+
+    # ============================================
     # Default values for standalone execution
     # When using inventory files, these are overridden
     # ============================================
@@ -42,12 +50,51 @@
           Spark Base Image: {{ spark_base_image }}
           Spark Notebook Image: {{ spark_notebook_image }}
 
+    - name: Write kind cluster config (includes optional LER-U host mount)
+      ansible.builtin.copy:
+        dest: "{{ kind_config_path }}"
+        mode: "0644"
+        content: |
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+            - role: control-plane
+              {% if leru_mount_enabled | bool %}
+              extraMounts:
+                - hostPath: {{ leru_host_path }}
+                  containerPath: {{ leru_node_path }}
+              {% endif %}
+            - role: worker
+              {% if leru_mount_enabled | bool %}
+              extraMounts:
+                - hostPath: {{ leru_host_path }}
+                  containerPath: {{ leru_node_path }}
+              {% endif %}
+            - role: worker
+              {% if leru_mount_enabled | bool %}
+              extraMounts:
+                - hostPath: {{ leru_host_path }}
+                  containerPath: {{ leru_node_path }}
+              {% endif %}
+
     - name: Ensure kind cluster exists
       ansible.builtin.command:
-        cmd: "kind create cluster --name {{ kind_cluster_name }}"
+        cmd: "kind create cluster --name {{ kind_cluster_name }} --config {{ kind_config_path }}"
       register: kind_create
       failed_when: kind_create.rc not in [0, 1]
       changed_when: kind_create.rc == 0
+
+    - name: Warn if kind cluster already exists and LER-U mount is enabled
+      ansible.builtin.debug:
+        msg: |
+          ⚠️ kind cluster '{{ kind_cluster_name }}' already exists.
+          LER-U mount expects '{{ leru_node_path }}' to be present via kind extraMounts.
+          If notebooks cannot see /opt/leru, recreate the cluster:
+            kind delete cluster --name {{ kind_cluster_name }}
+            ansible-playbook ansible/playbooks/kind_dev.yml
+      when:
+        - leru_mount_enabled | bool
+        - kind_create.rc == 1
 
     - name: Use kind cluster context
       ansible.builtin.command:
@@ -99,6 +146,7 @@
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
           -f {{ repo_root }}/k8s/jupyterhub/values-dev.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-kind.yaml
       when: environment_name | default('internet') == 'internet'
 
     - name: Install or upgrade JupyterHub (dev - onprem)
@@ -108,6 +156,7 @@
           --namespace {{ jupyterhub_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/jupyterhub/values-base.yaml
           -f {{ repo_root }}/k8s/jupyterhub/values-onprem.yaml
+          -f {{ repo_root }}/k8s/jupyterhub/values-kind.yaml
       when: environment_name | default('internet') == 'onprem'
 
     - name: Deploy MinIO (internet)

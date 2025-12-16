@@ -21,6 +21,20 @@ singleuser:
   networkPolicy:
     enabled: false
 
+  # Runtime-mount local LER-U folder into notebook pods (k3d dev)
+  # NOTE: k3d nodes must be created with a matching volume mount to /mnt/leru
+  extraVolumes:
+    - name: leru
+      hostPath:
+        path: /mnt/leru
+        type: Directory
+  extraVolumeMounts:
+    - name: leru
+      mountPath: /opt/leru
+      readOnly: false
+  extraEnv:
+    PYTHONPATH: "/opt/leru"
+
 # Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
 prePuller:
   hook:
