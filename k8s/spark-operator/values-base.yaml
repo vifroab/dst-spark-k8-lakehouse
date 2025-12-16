@@ -6,6 +6,13 @@ sparkJobNamespace: default
 
 webhook:
   enable: true
+  # Fix for read-only filesystem error
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  volumeMounts:
+    - name: tmp
+      mountPath: /tmp
 
 serviceAccounts:
   spark:
