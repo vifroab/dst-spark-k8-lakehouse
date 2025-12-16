@@ -15,9 +15,9 @@ spec:
               value: "root"
             - name: CLIENT_SECRET
               value: "s3cr3t"
-            # Base location for the S3-backed Polaris catalog
-            - name: STORAGE_LOCATION
-              value: "s3://polaris"
+            # Base locations for the S3-backed Polaris catalogs (buckets in MinIO)
+            - name: STORAGE_LOCATIONS
+              value: "sbx=s3://sbx,dev=s3://dev,test=s3://test,prod=s3://prod,polaris=s3://polaris"
           command:
             - /bin/sh
             - -c
@@ -47,42 +47,54 @@ spec:
                 exit 1
               fi
 
-              echo "Creating S3-backed Polaris catalog named 'polaris' with base location ${STORAGE_LOCATION} ..."
-              cat <<EOF >/tmp/catalog-payload.json
-              {
-                "catalog": {
-                  "name": "polaris",
-                  "type": "INTERNAL",
-                  "readOnly": false,
-                  "properties": {
-                    "default-base-location": "${STORAGE_LOCATION}"
-                  },
-                  "storageConfigInfo": {
-                    "storageType": "S3",
-                    "endpoint": "http://minio.minio.svc:9000",
-                    "endpointInternal": "http://minio.minio.svc:9000",
-                    "pathStyleAccess": true
+              create_catalog () {
+                CATALOG_NAME="$1"
+                STORAGE_LOCATION="$2"
+                echo "Creating S3-backed Polaris catalog '${CATALOG_NAME}' with base location ${STORAGE_LOCATION} ..."
+
+                cat <<EOF >/tmp/catalog-payload.json
+                {
+                  "catalog": {
+                    "name": "${CATALOG_NAME}",
+                    "type": "INTERNAL",
+                    "readOnly": false,
+                    "properties": {
+                      "default-base-location": "${STORAGE_LOCATION}"
+                    },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "endpoint": "http://minio.minio.svc:9000",
+                      "endpointInternal": "http://minio.minio.svc:9000",
+                      "pathStyleAccess": true
+                    }
                   }
                 }
+                EOF
+
+                HTTP_CODE=$(curl -s -o /tmp/catalog-response.json -w "%{http_code}" \
+                  -H "Authorization: Bearer ${TOKEN}" \
+                  -H "Polaris-Realm: POLARIS" \
+                  -H "Accept: application/json" \
+                  -H "Content-Type: application/json" \
+                  http://polaris:8181/api/management/v1/catalogs \
+                  -d @/tmp/catalog-payload.json || true)
+
+                echo "Polaris catalog '${CATALOG_NAME}' create HTTP status: ${HTTP_CODE}"
+                cat /tmp/catalog-response.json || true
+
+                # 201 = created, 409 = already exists (both are fine for idempotent bootstrap)
+                if [ "${HTTP_CODE}" != "201" ] && [ "${HTTP_CODE}" != "409" ]; then
+                  echo "Unexpected HTTP status when creating catalog '${CATALOG_NAME}'; failing Job."
+                  exit 1
+                fi
               }
-              EOF
 
-              HTTP_CODE=$(curl -s -o /tmp/catalog-response.json -w "%{http_code}" \
-                -H "Authorization: Bearer ${TOKEN}" \
-                -H "Polaris-Realm: POLARIS" \
-                -H "Accept: application/json" \
-                -H "Content-Type: application/json" \
-                http://polaris:8181/api/management/v1/catalogs \
-                -d @/tmp/catalog-payload.json || true)
-
-              echo "Polaris catalog create HTTP status: ${HTTP_CODE}"
-              cat /tmp/catalog-response.json || true
-
-              # 201 = created, 409 = already exists (both are fine for idempotent bootstrap)
-              if [ "${HTTP_CODE}" != "201" ] && [ "${HTTP_CODE}" != "409" ]; then
-                echo "Unexpected HTTP status when creating catalog; failing Job."
-                exit 1
-              fi
+              # Create all desired catalogs (sbx/dev/test/prod) + keep legacy 'polaris'
+              IFS=','; for PAIR in ${STORAGE_LOCATIONS}; do
+                NAME=$(echo "${PAIR}" | cut -d'=' -f1)
+                LOC=$(echo "${PAIR}" | cut -d'=' -f2-)
+                create_catalog "${NAME}" "${LOC}"
+              done
 
               echo "Polaris S3-backed catalog bootstrap complete."
 

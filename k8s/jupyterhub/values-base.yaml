@@ -16,6 +16,34 @@ hub:
       fs_gid: 0
       service_account: spark-sa
       automount_service_account_token: true
+  extraConfig:
+    10-require-minio-password: |
+      # Require users to provide MINIO_PASSWORD at spawn time (best practice: per-env MinIO users/policies).
+      def options_form(spawner):
+          return """
+          <label for="minio_password">MinIO password (required)</label>
+          <input class="form-control" type="password" name="minio_password" placeholder="Enter MinIO password" required />
+          <p class="help-block">
+            Your environment (sbx/dev/test/prod) selects the MinIO user and bucket.
+            This password must match the selected environment's MinIO user policy.
+          </p>
+          """
+
+      def options_from_form(formdata):
+          pw = ""
+          if "minio_password" in formdata and formdata["minio_password"]:
+              pw = formdata["minio_password"][0]
+          return {"minio_password": pw}
+
+      async def pre_spawn_hook(spawner):
+          pw = (spawner.user_options or {}).get("minio_password") or ""
+          if not pw:
+              raise Exception("MINIO_PASSWORD is required to start your server.")
+          spawner.environment["MINIO_PASSWORD"] = pw
+
+      c.KubeSpawner.options_form = options_form
+      c.KubeSpawner.options_from_form = options_from_form
+      c.KubeSpawner.pre_spawn_hook = pre_spawn_hook
 
 singleuser:
   image:

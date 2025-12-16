@@ -34,6 +34,47 @@ singleuser:
   extraEnv:
     PYTHONPATH: "/opt/leru"
 
+  # Environment selection profiles (best practice for k8s: explicit config, no git-branch coupling)
+  # Buckets in MinIO: sbx/dev/test/prod
+  profileList:
+    - display_name: "sbx (sandbox)"
+      description: "Sandbox bucket + Polaris catalog"
+      default: true
+      kubespawner_override:
+        environment:
+          DST_ENV: "sbx"
+          DST_BUCKET: "s3a://sbx"
+          MINIO_HOSTNAME: "minio.minio.svc"
+          MINIO_USER: "sbx"
+          POLARIS_WAREHOUSE: "sbx"
+    - display_name: "dev"
+      description: "Dev bucket + Polaris catalog"
+      kubespawner_override:
+        environment:
+          DST_ENV: "dev"
+          DST_BUCKET: "s3a://dev"
+          MINIO_HOSTNAME: "minio.minio.svc"
+          MINIO_USER: "dev"
+          POLARIS_WAREHOUSE: "dev"
+    - display_name: "test"
+      description: "Test bucket + Polaris catalog (recommend read-only creds)"
+      kubespawner_override:
+        environment:
+          DST_ENV: "test"
+          DST_BUCKET: "s3a://test"
+          MINIO_HOSTNAME: "minio.minio.svc"
+          MINIO_USER: "test"
+          POLARIS_WAREHOUSE: "test"
+    - display_name: "prod"
+      description: "Prod bucket + Polaris catalog (recommend read-only creds)"
+      kubespawner_override:
+        environment:
+          DST_ENV: "prod"
+          DST_BUCKET: "s3a://prod"
+          MINIO_HOSTNAME: "minio.minio.svc"
+          MINIO_USER: "prod"
+          POLARIS_WAREHOUSE: "prod"
+
 # Disable the pre-puller explicitly to avoid "hook-image-awaiter" timeouts
 prePuller:
   hook:
