@@ -12,7 +12,8 @@ webhook:
       emptyDir: {}
   volumeMounts:
     - name: tmp
-      mountPath: /tmp
+      # spark-operator webhook writes generated certs here
+      mountPath: /etc/k8s-webhook-server/serving-certs
 
 serviceAccounts:
   spark:

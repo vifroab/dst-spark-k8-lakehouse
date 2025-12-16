@@ -1,16 +1,17 @@
 # kind-specific JupyterHub configuration
 # Runtime-mount local LER-U folder into notebook pods (kind dev)
 singleuser:
-  # NOTE: kind nodes must be created with a matching extraMount to /mnt/leru
-  extraVolumes:
-    - name: leru
-      hostPath:
-        path: /mnt/leru
-        type: Directory
-  extraVolumeMounts:
-    - name: leru
-      mountPath: /opt/leru
-      readOnly: false
+  storage:
+    # NOTE: kind nodes must be created with a matching extraMount to /mnt/leru
+    extraVolumes:
+      - name: leru
+        hostPath:
+          path: /mnt/leru
+          type: Directory
+    extraVolumeMounts:
+      - name: leru
+        mountPath: /opt/leru
+        readOnly: false
   extraEnv:
     PYTHONPATH: "/opt/leru"
 
