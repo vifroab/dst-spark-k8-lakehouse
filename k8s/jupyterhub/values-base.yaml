@@ -17,28 +17,36 @@ hub:
       service_account: spark-sa
       automount_service_account_token: true
   extraConfig:
-    10-require-minio-password: |
-      # Require users to provide MINIO_PASSWORD at spawn time (best practice: per-env MinIO users/policies).
+    10-require-minio-credentials: |
+      # Require users to provide MINIO_USER + MINIO_PASSWORD at spawn time.
+      # The selected JupyterHub profile decides the environment routing (DST_BUCKET / POLARIS_WAREHOUSE).
       def options_form(spawner):
           return """
-          <label for="minio_password">MinIO password (required)</label>
-          <input class="form-control" type="password" name="minio_password" placeholder="Enter MinIO password" required />
+          <label for="minio_user">MinIO username (required)</label>
+          <input class="form-control" type="text" name="minio_user" placeholder="Enter your MinIO username" required />
+          <label for="minio_password" style="margin-top: 0.5rem;">MinIO password (required)</label>
+          <input class="form-control" type="password" name="minio_password" placeholder="Enter your MinIO password" required />
           <p class="help-block">
-            Your environment (sbx/dev/test/prod) selects the MinIO user and bucket.
-            This password must match the selected environment's MinIO user policy.
+            Your selected environment (sbx/dev/test/prod) selects the bucket + Polaris catalog.
+            Your MinIO credentials control access via MinIO policies.
           </p>
           """
 
       def options_from_form(formdata):
+          user = ""
           pw = ""
+          if "minio_user" in formdata and formdata["minio_user"]:
+              user = formdata["minio_user"][0]
           if "minio_password" in formdata and formdata["minio_password"]:
               pw = formdata["minio_password"][0]
-          return {"minio_password": pw}
+          return {"minio_user": user, "minio_password": pw}
 
       async def pre_spawn_hook(spawner):
+          user = (spawner.user_options or {}).get("minio_user") or ""
           pw = (spawner.user_options or {}).get("minio_password") or ""
-          if not pw:
-              raise Exception("MINIO_PASSWORD is required to start your server.")
+          if not user or not pw:
+              raise Exception("MINIO_USER and MINIO_PASSWORD are required to start your server.")
+          spawner.environment["MINIO_USER"] = user
           spawner.environment["MINIO_PASSWORD"] = pw
 
       c.KubeSpawner.options_form = options_form
