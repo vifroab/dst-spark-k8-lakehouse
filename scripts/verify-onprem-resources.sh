@@ -53,7 +53,7 @@ set -e
 # Helm repository URL (Nexus Helm proxy)
 # Online: not needed for direct Helm repo access
 # On-prem: set to your Nexus Helm proxy
-: "${HELM_REPO_URL:=https://srvnexus1.dst.dk:/repository/}"
+: "${HELM_REPO_URL:=https://srvnexus1.dst.dk/repository}"
 
 # Maven repository URL (Nexus Maven proxy) - for JAR verification
 # For flat JAR storage (just filenames): https://srvnexus1.dst.dk/repository/apache-spark/spark-jars
@@ -80,6 +80,14 @@ DOCKER_IMAGES=(
     "minio/minio:RELEASE.2024-11-07T00-52-20Z"
     "apache/polaris:latest"
     "jupyterhub/k8s-hub:4.3.1"
+    "jupyterhub/k8s-network-tools:4.3.1"
+    "jupyterhub/configurable-http-proxy:5.1"
+    "rancher/mirrored-pause:3.6"
+    "rancher/klipper-helm:v0.9.3-build20241008"
+    "rancher/local-path-provisioner:v0.0.30"
+    "rancher/mirrored-coredns-coredns:1.12.0"
+    "rancher/mirrored-metrics-server:v0.7.2"
+    "traefik:v3.2.1"
 )
 
 # =============================================================================

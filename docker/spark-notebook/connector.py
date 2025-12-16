@@ -1,3 +1,4 @@
+import os
 import socket
 from pyspark.sql import SparkSession
 
@@ -26,9 +27,17 @@ def create_spark_session(app_name="spark-k8s-app", enable_lineage=False):
     Args:
         app_name: Name for the Spark application
         enable_lineage: If True, enables OpenLineage/DataHub integration (requires DataHub running)
+    
+    Environment Variables:
+        SPARK_EXECUTOR_IMAGE: Container image for executors (default: statkube/spark-notebook:spark3.5.3-py3.12-1)
     """
     driver_ip = get_driver_ip()
     print(f"Initializing Spark Session '{app_name}' with Driver IP: {driver_ip}")
+
+    # Executor image - configurable via environment variable for on-prem deployments
+    default_image = "statkube/spark-notebook:spark3.5.3-py3.12-1"
+    executor_image = os.environ.get("SPARK_EXECUTOR_IMAGE", default_image)
+    print(f"Using executor image: {executor_image}")
 
     # Common S3/MinIO Credentials
     s3_endpoint = "http://minio.minio.svc:9000"
@@ -60,13 +69,8 @@ def create_spark_session(app_name="spark-k8s-app", enable_lineage=False):
         SparkSession.builder.appName(app_name)
         .master("k8s://https://kubernetes.default.svc")
         # --- Container Image ---
-        # Note: We assume the image is already set in the pod template or we use the base
-        # But for dynamic allocation/executors, we specify it here.
-        # Ideally, this matches the image running the notebook.
-        .config(
-            "spark.kubernetes.container.image",
-            "statkube/spark-notebook:spark3.5.3-py3.12-1",
-        )
+        # Configurable via SPARK_EXECUTOR_IMAGE environment variable
+        .config("spark.kubernetes.container.image", executor_image)
         .config("spark.kubernetes.container.image.pullPolicy", "IfNotPresent")
         .config("spark.kubernetes.namespace", "jhub-dev")  # Default to where we run
         # --- Networking ---
@@ -150,3 +154,4 @@ def create_spark_session(app_name="spark-k8s-app", enable_lineage=False):
         )
 
     return spark.getOrCreate()
+

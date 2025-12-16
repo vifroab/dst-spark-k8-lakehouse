@@ -11,8 +11,6 @@
     spark_operator_namespace: spark-operator
     jupyterhub_release: jhub
     jupyterhub_namespace: jhub-dev
-    datahub_release: datahub
-    datahub_namespace: datahub
 
     # Treat this playbook as being inside ansible/playbooks relative to repo root
     repo_root: "{{ playbook_dir }}/../.."
@@ -34,8 +32,6 @@
     _helm_spark_operator_repo_url: "{{ helm_spark_operator_repo_url | default('https://kubeflow.github.io/spark-operator') }}"
     _helm_jupyterhub_repo_name: "{{ helm_jupyterhub_repo_name | default('jupyterhub') }}"
     _helm_jupyterhub_repo_url: "{{ helm_jupyterhub_repo_url | default('https://jupyterhub.github.io/helm-chart/') }}"
-    _helm_datahub_repo_name: "{{ helm_datahub_repo_name | default('datahub') }}"
-    _helm_datahub_repo_url: "{{ helm_datahub_repo_url | default('https://helm.datahubproject.io/') }}"
 
     # Image configuration (defaults to public Docker Hub)
     _spark_base_image: "{{ spark_base_image | default('statkube/spark-base:spark3.5.3-py3.12-1') }}"
@@ -47,10 +43,10 @@
         msg: |
           Environment: {{ environment_name | default('internet (default)') }}
           Cluster Type: k3d (k3s in Docker)
-          Spark Operator Helm Repo: {{ _helm_spark_operator_repo_url }}
-          JupyterHub Helm Repo: {{ _helm_jupyterhub_repo_url }}
-          Spark Base Image: {{ _spark_base_image }}
-          Spark Notebook Image: {{ _spark_notebook_image }}
+          Spark Operator Helm Repo: {{ helm_spark_operator_repo_url }}
+          JupyterHub Helm Repo: {{ helm_jupyterhub_repo_url }}
+          Spark Base Image: {{ spark_base_image }}
+          Spark Notebook Image: {{ spark_notebook_image }}
           Port Mappings: {{ k3d_http_port }}, {{ k3d_https_port }}
 
     - name: Check if k3d cluster already exists
@@ -100,13 +96,6 @@
       changed_when: "'has been added' in jhub_repo.stdout"
       failed_when: jhub_repo.rc not in [0]
 
-    - name: Add DataHub Helm repo
-      ansible.builtin.command:
-        cmd: "helm repo add {{ _helm_datahub_repo_name }} {{ _helm_datahub_repo_url }}"
-      register: datahub_repo
-      changed_when: "'has been added' in datahub_repo.stdout"
-      failed_when: datahub_repo.rc not in [0]
-
     - name: Update Helm repos
       ansible.builtin.command:
         cmd: "helm repo update"
@@ -117,7 +106,6 @@
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator
-          --version 1.1.27
           --namespace {{ spark_operator_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
           -f {{ repo_root }}/k8s/spark-operator/values-dev.yaml
@@ -127,7 +115,6 @@
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator
-          --version 1.1.27
           --namespace {{ spark_operator_namespace }} --create-namespace
           -f {{ repo_root }}/k8s/spark-operator/values-base.yaml
           -f {{ repo_root }}/k8s/spark-operator/values-onprem.yaml
@@ -203,110 +190,6 @@
         cmd: "kubectl apply -f {{ repo_root }}/k8s/polaris/polaris-bootstrap-onprem.yaml"
       when: environment_name | default('internet') == 'onprem'
 
-    # ============================================
-    # DataHub Deployment (Two-Chart Setup)
-    # 1. Install prerequisites (MySQL, Elasticsearch, Kafka)
-    # 2. Install DataHub services
-    # ============================================
-
-    - name: Create DataHub namespace
-      ansible.builtin.command:
-        cmd: "kubectl create namespace {{ datahub_namespace }}"
-      register: create_datahub_ns
-      failed_when: create_datahub_ns.rc not in [0, 1]
-      changed_when: create_datahub_ns.rc == 0
-
-    - name: Create MySQL secrets for DataHub
-      ansible.builtin.command:
-        cmd: >
-          kubectl create secret generic mysql-secrets
-          --from-literal=mysql-root-password=datahub
-          --namespace {{ datahub_namespace }}
-      register: mysql_secret
-      failed_when: mysql_secret.rc not in [0, 1]
-      changed_when: mysql_secret.rc == 0
-
-    - name: Install DataHub prerequisites (MySQL, Elasticsearch, Kafka)
-      ansible.builtin.command:
-        cmd: >
-          helm upgrade --install prerequisites {{ _helm_datahub_repo_name }}/datahub-prerequisites
-          --namespace {{ datahub_namespace }}
-          -f {{ repo_root }}/k8s/datahub/prerequisites-values.yaml
-          --timeout 10m
-          --wait
-      register: datahub_prereq
-      failed_when: false
-
-    - name: Display prerequisites status
-      ansible.builtin.debug:
-        msg: "DataHub prerequisites: {{ 'SUCCESS' if datahub_prereq.rc == 0 else 'FAILED - check with: kubectl get pods -n datahub' }}"
-
-    - name: Wait for Elasticsearch to be ready
-      ansible.builtin.command:
-        cmd: "kubectl wait --for=condition=ready pod -l app=elasticsearch-master -n {{ datahub_namespace }} --timeout=300s"
-      register: es_wait
-      failed_when: false
-      when: datahub_prereq.rc == 0
-
-    - name: Install DataHub services (dev - internet)
-      ansible.builtin.command:
-        cmd: >
-          helm upgrade --install {{ datahub_release }} {{ _helm_datahub_repo_name }}/datahub
-          --namespace {{ datahub_namespace }}
-          -f {{ repo_root }}/k8s/datahub/values-base.yaml
-          -f {{ repo_root }}/k8s/datahub/values-dev.yaml
-          --timeout 15m
-          --wait
-      when: environment_name | default('internet') == 'internet' and datahub_prereq.rc == 0
-      register: datahub_install
-      failed_when: false
-
-    - name: Install DataHub services (dev - onprem)
-      ansible.builtin.command:
-        cmd: >
-          helm upgrade --install {{ datahub_release }} {{ _helm_datahub_repo_name }}/datahub
-          --namespace {{ datahub_namespace }}
-          -f {{ repo_root }}/k8s/datahub/values-base.yaml
-          -f {{ repo_root }}/k8s/datahub/values-onprem.yaml
-          -f {{ repo_root }}/k8s/datahub/values-dev.yaml
-          --timeout 15m
-          --wait
-      when: environment_name | default('internet') == 'onprem' and datahub_prereq.rc == 0
-      register: datahub_install_onprem
-      failed_when: false
-
-    - name: Display DataHub installation status
-      ansible.builtin.debug:
-        msg: |
-          DataHub installation status: {{ 'SUCCESS' if (datahub_install.rc | default(datahub_install_onprem.rc | default(1))) == 0 else 'PENDING/FAILED - check pods with: kubectl get pods -n datahub' }}
-          Note: DataHub takes 5-10 minutes to fully initialize on first run.
-
-    - name: Wait for DataHub GMS to be ready
-      ansible.builtin.command:
-        cmd: "kubectl wait --for=condition=available deployment/datahub-datahub-gms -n {{ datahub_namespace }} --timeout=300s"
-      register: datahub_gms_wait
-      failed_when: false
-
-    - name: Deploy DataHub Polaris ingestion ConfigMap
-      ansible.builtin.command:
-        cmd: "kubectl apply -f {{ repo_root }}/k8s/datahub/ingestion-configmap.yaml"
-      when: datahub_gms_wait.rc | default(1) == 0
-
-    - name: Delete existing DataHub ingestion job (if any)
-      ansible.builtin.command:
-        cmd: "kubectl delete job datahub-ingest-polaris -n {{ datahub_namespace }} --ignore-not-found"
-      when: datahub_gms_wait.rc | default(1) == 0
-
-    - name: Run DataHub Polaris ingestion job (internet)
-      ansible.builtin.command:
-        cmd: "kubectl apply -f {{ repo_root }}/k8s/datahub/ingestion-polaris.yaml"
-      when: environment_name | default('internet') == 'internet' and datahub_gms_wait.rc | default(1) == 0
-
-    - name: Run DataHub Polaris ingestion job (onprem)
-      ansible.builtin.command:
-        cmd: "kubectl apply -f {{ repo_root }}/k8s/datahub/ingestion-polaris-onprem.yaml"
-      when: environment_name | default('internet') == 'onprem' and datahub_gms_wait.rc | default(1) == 0
-
     - name: Create spark-sa ServiceAccount in jhub-dev
       ansible.builtin.command:
         cmd: "kubectl apply -f {{ repo_root }}/k8s/jupyterhub/service-account.yaml"
@@ -330,16 +213,11 @@
           JupyterHub is available at: http://localhost:8080
           Login: any username / password: test
           
-          DataHub UI: kubectl port-forward svc/datahub-datahub-frontend -n datahub 9002:9002
-          Then open: http://localhost:9002
-          Login: datahub / datahub
-          
-          No port-forward needed for JupyterHub - k3d's built-in LoadBalancer handles it!
+          No port-forward needed - k3d's built-in LoadBalancer handles it!
           
           Useful commands:
             kubectl get pods -n jhub-dev
             kubectl get pods -n spark-operator
-            kubectl get pods -n datahub
             k3d cluster list
             k3d cluster stop {{ k3d_cluster_name }}
             k3d cluster delete {{ k3d_cluster_name }}

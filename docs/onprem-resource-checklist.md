@@ -24,28 +24,6 @@ Available via `srvnexus1:80888/`:
 | `apache/polaris` | `latest` | Docker Hub |
 | `jupyterhub/k8s-hub` | `4.3.1` | Docker Hub |
 
-### DataHub Images
-Available via `srvnexus1:80888/`:
-
-| Image | Version | Source |
-|-------|---------|--------|
-| `acryldata/datahub-gms` | `latest` | Docker Hub |
-| `acryldata/datahub-frontend-react` | `latest` | Docker Hub |
-| `acryldata/datahub-mae-consumer` | `latest` | Docker Hub |
-| `acryldata/datahub-mce-consumer` | `latest` | Docker Hub |
-| `acryldata/datahub-actions` | `latest` | Docker Hub |
-| `acryldata/datahub-ingestion` | `head` | Docker Hub |
-| `acryldata/datahub-upgrade` | `latest` | Docker Hub |
-
-### DataHub Dependency Images
-Available via `srvnexus1:80888/`:
-
-| Image | Version | Source |
-|-------|---------|--------|
-| `bitnami/mysql` | `latest` | Docker Hub |
-| `bitnami/kafka` | `latest` | Docker Hub |
-| `docker.elastic.co/elasticsearch/elasticsearch` | `7.17.x` | Elastic |
-
 **Test command:**
 ```bash
 docker pull srvnexus1:80888/eclipse-temurin:11-jdk-jammy
@@ -76,7 +54,6 @@ docker pull srvnexus1:<GHCR_PORT>/googlecloudplatform/spark-operator:v1beta2-1.3
 |-------|-------------------|
 | `spark-operator` | https://kubeflow.github.io/spark-operator |
 | `jupyterhub` | https://jupyterhub.github.io/helm-chart/ |
-| `datahub` | https://helm.datahubproject.io/ |
 
 **Test command:**
 ```bash
@@ -175,8 +152,6 @@ If caching PyPI packages, the following are required:
 - [ ] Python/uv tarballs available
 - [ ] APT sources.list configured on build machines
 - [ ] Network connectivity from Kubernetes nodes to Nexus
-- [ ] DataHub images pullable from proxy
-- [ ] DataHub Helm chart available in Nexus
 
 ---
 

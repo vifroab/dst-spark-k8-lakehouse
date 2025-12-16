@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: polaris
-        image: apache/polaris:latest
+        image: apache/polaris:1.1.0-incubating
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8181

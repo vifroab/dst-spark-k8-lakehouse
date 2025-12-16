@@ -100,7 +100,7 @@ Docker Hub proxy (port 18079):
 - `eclipse-temurin:11-jdk-jammy`
 - `busybox:1.36`
 - `minio/minio:RELEASE.2024-11-07T00-52-20Z`
-- `apache/polaris:latest`
+- `apache/polaris:0.9.0`
 - `jupyterhub/k8s-hub:4.3.1`
 
 GHCR proxy (port 18083):

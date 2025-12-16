@@ -16,15 +16,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ENV PATH="${JAVA_HOME}/bin:/usr/local/python/bin:${SPARK_HOME}/bin:${SPARK_HOME}/sbin:/usr/local/bin:${PATH}"
 
 # ============================================
-# Configure APT sources for on-prem
+# Configure APT sources for on-prem (optional)
 # ============================================
-# For air-gapped/on-prem deployment, uncomment this line:
-# COPY sources.list.nexus /etc/apt/sources.list
-# For internet builds (default), leave it commented out
+# Uncomment the following lines for air-gapped/on-prem deployment:
+COPY sources.list.nexus /etc/apt/sources.list
 
 # Install build dependencies for Python and runtime dependencies
+# Note: In on-prem environments, uncomment the COPY line above to use Nexus APT proxy
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --fix-missing \
       curl \
       wget \
       ca-certificates \
@@ -115,6 +115,7 @@ COPY jars/*.jar ${SPARK_HOME}/jars/
 # ============================================
 COPY requirements.txt /tmp/requirements.txt
 
+ENV UV_INDEX_URL=https://srvnexus1.dst.dk/repository/pypi/simple
 ENV UV_PYTHON="/usr/local/python/bin/python3"
 
 RUN UV_PYTHON="${UV_PYTHON}" uv pip install --system --require-hashes -r /tmp/requirements.txt

@@ -83,7 +83,7 @@
       register: helm_repo_update
       failed_when: false
 
-    - name: Install or upgrade Spark Operator (dev - internet)
+    - name: Install or upgrade Spark Operator (dev)
       ansible.builtin.command:
         cmd: >
           helm upgrade --install {{ spark_operator_release }} {{ _helm_spark_operator_repo_name }}/spark-operator

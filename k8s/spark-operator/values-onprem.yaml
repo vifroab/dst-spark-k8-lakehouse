@@ -1,10 +1,10 @@
-# On-Prem Spark Operator values (for chart version 2.x)
+# On-Prem Spark Operator values (for chart version 1.x)
 # Uses Nexus-proxied container images
-# Usage: helm upgrade --install spark-operator spark-operator/spark-operator -f values-base.yaml -f values-onprem.yaml
+# Usage: helm upgrade --install spark-operator spark-operator/spark-operator --version 1.1.27 -f values-base.yaml -f values-onprem.yaml
 ---
 # Override image to use Nexus GHCR proxy
 # Original: ghcr.io/googlecloudplatform/spark-operator:v1beta2-1.3.8-3.1.1
 image:
-  registry: srvnexus1.dst.dk:18083
-  repository: googlecloudplatform/spark-operator
+  repository: srvnexus1.dst.dk:18083/googlecloudplatform/spark-operator
   tag: v1beta2-1.3.8-3.1.1
+

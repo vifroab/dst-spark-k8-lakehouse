@@ -2,25 +2,18 @@ import uuid
 import time
 from .spark_logger import SparkMetricsLogger
 
-
 class SparkMetricContext:
-    def __init__(
-        self, layer, project, dataset_year, description, job_name=None, table_path=None
-    ):
+    def __init__(self, layer, project, dataset_year, description, job_name=None):
         self.layer = layer
         self.project = project
         self.dataset_year = dataset_year
         self.description = description
         self.job_name = job_name
-        self.table_path = table_path
         self.run_id = str(uuid.uuid4())  # Generate run_id once for the whole context
 
     def __enter__(self):
         self.start = time.time()
-        if self.table_path:
-            self.logger = SparkMetricsLogger(table_path=self.table_path)
-        else:
-            self.logger = SparkMetricsLogger()
+        self.logger = SparkMetricsLogger()
         # Pass the context (self) back so the user can access run_id
         return self
 
@@ -47,7 +40,7 @@ class SparkMetricContext:
             extra={},
             status=status,
             duration_ms=duration_ms,
-            run_id=self.run_id,  # Use the same run_id
+            run_id=self.run_id  # Use the same run_id
         )
 
         return False  # Do not suppress errors

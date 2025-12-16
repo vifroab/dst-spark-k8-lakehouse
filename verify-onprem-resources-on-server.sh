@@ -75,21 +75,11 @@ fi
 # REQUIRED DOCKER IMAGES (Docker Hub via Nexus)
 # =============================================================================
 DOCKER_IMAGES=(
-    # Application images
     "eclipse-temurin:11-jdk-jammy"
     "busybox:1.36"
     "minio/minio:RELEASE.2024-11-07T00-52-20Z"
-    "apache/polaris:latest"
+    "apache/polaris:0.9.0"
     "jupyterhub/k8s-hub:4.3.1"
-    # JupyterHub proxy (originally from quay.io, must be mirrored to Nexus Docker Hub proxy)
-    "jupyterhub/configurable-http-proxy:5.1.0"
-    # k3s system images (required for k3d cluster to function)
-    "rancher/mirrored-pause:3.6"
-    "rancher/klipper-helm:v0.9.3-build20241008"
-    "rancher/local-path-provisioner:v0.0.30"
-    "rancher/mirrored-coredns-coredns:1.12.0"
-    "rancher/mirrored-metrics-server:v0.7.2"
-    "traefik:v3.2.1"
 )
 
 # =============================================================================

@@ -1,11 +1,5 @@
-# Prod-like environment Spark Operator values (for chart version 2.x)
-# Usage: helm ... -f values-base.yaml -f values-prodlike.yaml
----
+sparkJobNamespace: spark-prod
+
 fullnameOverride: spark-operator-prod
 
-podLabels:
-  env: prodlike
 
-spark:
-  jobNamespaces:
-    - spark-prod

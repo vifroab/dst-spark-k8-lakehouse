@@ -1,0 +1,21 @@
+# APT sources configuration for on-prem Nexus proxy
+# Ubuntu 22.04 (Jammy Jellyfish)
+#
+# Replace "srvnexus1.dst.dk:8081" with your actual Nexus host and port
+# Format: deb http://nexus-host:port/repository/apt-proxy-name distribution component
+
+
+deb https://srvnexus1.dst.dk/repository/jammy jammy main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-updates multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-backports main restricted universe multiverse
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security main restricted
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security universe
+deb https://srvnexus1.dst.dk/repository/jammy jammy-security multiverse
+
+# Note: The repository names (apt-ubuntu, apt-ubuntu-security) must match
+# what's configured in your Nexus APT proxy repositories
+
