@@ -85,8 +85,29 @@
           {% endif %}
       register: k3d_create
       when: (k3d_recreate_cluster | bool) or (k3d_cluster_name not in (k3d_list.stdout | default('')))
-      failed_when: k3d_create.rc not in [0, 1]
-      changed_when: k3d_create.rc == 0
+      failed_when: k3d_create.rc != 0
+      changed_when: true
+
+    - name: Show k3d create output (for debugging)
+      ansible.builtin.debug:
+        var: k3d_create
+      when: k3d_create is defined
+
+    - name: Verify k3d nodes exist for cluster
+      ansible.builtin.command:
+        cmd: "k3d node list -o json"
+      register: k3d_nodes
+      changed_when: false
+
+    - name: Fail if no k3d nodes were created
+      ansible.builtin.fail:
+        msg: |
+          k3d cluster '{{ k3d_cluster_name }}' has no nodes, so kubeconfig cannot be generated.
+          Please run these and share output:
+            k3d cluster list
+            k3d node list
+            docker ps
+      when: (k3d_nodes.stdout | default('')) is not search(k3d_cluster_name)
 
     - name: Warn if k3d cluster already exists and LER-U mount is enabled
       ansible.builtin.debug:
