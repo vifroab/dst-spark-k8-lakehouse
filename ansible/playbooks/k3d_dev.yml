@@ -90,6 +90,14 @@
         - leru_mount_enabled | bool
         - k3d_cluster_name in (k3d_list.stdout | default(''))
 
+    - name: Ensure k3d kubeconfig is merged and context exists
+      ansible.builtin.command:
+        cmd: >
+          k3d kubeconfig merge {{ k3d_cluster_name }}
+          --kubeconfig-update-default
+          --kubeconfig-switch-context
+      changed_when: false
+
     - name: Use k3d cluster context
       ansible.builtin.command:
         cmd: "kubectl config use-context k3d-{{ k3d_cluster_name }}"
