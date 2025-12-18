@@ -59,36 +59,36 @@ spec:
                 echo "Creating S3-backed Polaris catalog '${CATALOG_NAME}' with base location ${STORAGE_LOCATION} ..."
 
               cat <<EOF >/tmp/catalog-payload.json
-                {
-                  "catalog": {
+              {
+                "catalog": {
                     "name": "${CATALOG_NAME}",
-                    "type": "INTERNAL",
-                    "readOnly": false,
-                    "properties": {
-                      "default-base-location": "${STORAGE_LOCATION}"
-                    },
-                    "storageConfigInfo": {
-                      "storageType": "S3",
-                      "endpoint": "http://minio.minio.svc:9000",
-                      "endpointInternal": "http://minio.minio.svc:9000",
-                      "pathStyleAccess": true
-                    }
+                  "type": "INTERNAL",
+                  "readOnly": false,
+                  "properties": {
+                    "default-base-location": "${STORAGE_LOCATION}"
+                  },
+                  "storageConfigInfo": {
+                    "storageType": "S3",
+                    "endpoint": "http://minio.minio.svc:9000",
+                    "endpointInternal": "http://minio.minio.svc:9000",
+                    "pathStyleAccess": true
                   }
                 }
+              }
               EOF
 
-                HTTP_RESPONSE=$(wget -q -O- -S \
-                  --header="Authorization: Bearer ${TOKEN}" \
-                  --header="Polaris-Realm: POLARIS" \
-                  --header="Accept: application/json" \
-                  --header="Content-Type: application/json" \
-                  --post-file=/tmp/catalog-payload.json \
-                  http://polaris:8181/api/management/v1/catalogs 2>&1) || true
+              HTTP_RESPONSE=$(wget -q -O- -S \
+                --header="Authorization: Bearer ${TOKEN}" \
+                --header="Polaris-Realm: POLARIS" \
+                --header="Accept: application/json" \
+                --header="Content-Type: application/json" \
+                --post-file=/tmp/catalog-payload.json \
+                http://polaris:8181/api/management/v1/catalogs 2>&1) || true
 
                 echo "Polaris catalog '${CATALOG_NAME}' create response: ${HTTP_RESPONSE}"
-                if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
+              if echo "${HTTP_RESPONSE}" | grep -q "201 Created"; then
                   echo "✅ Catalog ${CATALOG_NAME} created."
-                elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
+              elif echo "${HTTP_RESPONSE}" | grep -q "409"; then
                   echo "ℹ️ Catalog ${CATALOG_NAME} already exists (409)."
                 else
                   echo "⚠️ Unexpected response for ${CATALOG_NAME} (continuing)."

@@ -53,40 +53,40 @@ spec:
                 echo "Creating S3-backed Polaris catalog '${CATALOG_NAME}' with base location ${STORAGE_LOCATION} ..."
 
               cat <<EOF >/tmp/catalog-payload.json
-                {
-                  "catalog": {
+              {
+                "catalog": {
                     "name": "${CATALOG_NAME}",
-                    "type": "INTERNAL",
-                    "readOnly": false,
-                    "properties": {
-                      "default-base-location": "${STORAGE_LOCATION}"
-                    },
-                    "storageConfigInfo": {
-                      "storageType": "S3",
-                      "endpoint": "http://minio.minio.svc:9000",
-                      "endpointInternal": "http://minio.minio.svc:9000",
-                      "pathStyleAccess": true
-                    }
+                  "type": "INTERNAL",
+                  "readOnly": false,
+                  "properties": {
+                    "default-base-location": "${STORAGE_LOCATION}"
+                  },
+                  "storageConfigInfo": {
+                    "storageType": "S3",
+                    "endpoint": "http://minio.minio.svc:9000",
+                    "endpointInternal": "http://minio.minio.svc:9000",
+                    "pathStyleAccess": true
                   }
                 }
+              }
               EOF
 
-                HTTP_CODE=$(curl -s -o /tmp/catalog-response.json -w "%{http_code}" \
-                  -H "Authorization: Bearer ${TOKEN}" \
-                  -H "Polaris-Realm: POLARIS" \
-                  -H "Accept: application/json" \
-                  -H "Content-Type: application/json" \
-                  http://polaris:8181/api/management/v1/catalogs \
-                  -d @/tmp/catalog-payload.json || true)
+              HTTP_CODE=$(curl -s -o /tmp/catalog-response.json -w "%{http_code}" \
+                -H "Authorization: Bearer ${TOKEN}" \
+                -H "Polaris-Realm: POLARIS" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                http://polaris:8181/api/management/v1/catalogs \
+                -d @/tmp/catalog-payload.json || true)
 
                 echo "Polaris catalog '${CATALOG_NAME}' create HTTP status: ${HTTP_CODE}"
-                cat /tmp/catalog-response.json || true
+              cat /tmp/catalog-response.json || true
 
-                # 201 = created, 409 = already exists (both are fine for idempotent bootstrap)
-                if [ "${HTTP_CODE}" != "201" ] && [ "${HTTP_CODE}" != "409" ]; then
+              # 201 = created, 409 = already exists (both are fine for idempotent bootstrap)
+              if [ "${HTTP_CODE}" != "201" ] && [ "${HTTP_CODE}" != "409" ]; then
                   echo "Unexpected HTTP status when creating catalog '${CATALOG_NAME}'; failing Job."
-                  exit 1
-                fi
+                exit 1
+              fi
               }
 
               # Create all desired catalogs (sbx/dev/test/prod) + keep legacy 'polaris'

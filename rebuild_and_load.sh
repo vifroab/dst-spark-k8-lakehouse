@@ -28,6 +28,10 @@ echo ""
 echo "Building spark-notebook image..."
 docker build -t statkube/spark-notebook:$IMAGE_TAG -f docker/spark-notebook/Dockerfile docker/spark-notebook
 
+echo ""
+echo "Building jupyterhub-hub image..."
+docker build -t statkube/jupyterhub-hub:$IMAGE_TAG -f docker/jupyterhub-hub/Dockerfile docker/jupyterhub-hub
+
 # Load images into k3d
 echo ""
 echo "Loading spark-base image into k3d cluster '$CLUSTER_NAME'..."
@@ -36,6 +40,10 @@ k3d image import statkube/spark-base:$IMAGE_TAG -c $CLUSTER_NAME
 echo ""
 echo "Loading spark-notebook image into k3d cluster '$CLUSTER_NAME'..."
 k3d image import statkube/spark-notebook:$IMAGE_TAG -c $CLUSTER_NAME
+
+echo ""
+echo "Loading jupyterhub-hub image into k3d cluster '$CLUSTER_NAME'..."
+k3d image import statkube/jupyterhub-hub:$IMAGE_TAG -c $CLUSTER_NAME
 
 # Run Helm upgrade
 echo ""

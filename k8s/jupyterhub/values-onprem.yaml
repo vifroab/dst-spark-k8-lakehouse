@@ -4,9 +4,11 @@
 ---
 hub:
   image:
-    # ON-PREM: Use Nexus-proxied JupyterHub hub image
-    name: srvnexus1.dst.dk:18079/jupyterhub/k8s-hub
-    tag: 4.3.1
+    # ON-PREM: Use custom built hub image
+    # Was: srvnexus1.dst.dk:18079/jupyterhub/k8s-hub
+    name: statkube/jupyterhub-hub
+    tag: spark3.5.3-py3.12-1
+
 
 singleuser:
   image:

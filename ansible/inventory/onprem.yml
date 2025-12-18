@@ -45,8 +45,9 @@ all:
     spark_notebook_image: "{{ docker_registry_prefix }}statkube/spark-notebook:spark3.5.3-py3.12-1"
 
     # Third-party images (Docker Hub)
-    jupyterhub_hub_image: "{{ docker_registry_prefix }}jupyterhub/k8s-hub"
-    jupyterhub_hub_tag: "4.3.1"
+    # Changed to custom local build for NativeAuthenticator
+    jupyterhub_hub_image: "statkube/jupyterhub-hub:spark3.5.3-py3.12-1"
+    jupyterhub_hub_tag: "spark3.5.3-py3.12-1"
     minio_image: "{{ docker_registry_prefix }}minio/minio:RELEASE.2024-11-07T00-52-20Z"
     busybox_image: "{{ docker_registry_prefix }}busybox:1.36"
     polaris_image: "{{ docker_registry_prefix }}apache/polaris:latest"

@@ -36,7 +36,7 @@
     # Recreate the cluster when runtime-mounting host paths (ensures volume mount is present)
     k3d_recreate_cluster: "{{ leru_mount_enabled | bool }}"
 
-    # ============================================
+    # =i===========================================
     # Default values for standalone execution
     # When using inventory files, these are overridden
     # ============================================
@@ -146,6 +146,11 @@
     - name: Optionally load notebook image into k3d
       ansible.builtin.command:
         cmd: "k3d image import {{ spark_notebook_image }} -c {{ k3d_cluster_name }}"
+      when: load_images | bool
+
+    - name: Optionally load hub image into k3d
+      ansible.builtin.command:
+        cmd: "k3d image import {{ jupyterhub_hub_image | default('statkube/jupyterhub-hub:spark3.5.3-py3.12-1') }} -c {{ k3d_cluster_name }}"
       when: load_images | bool
 
     - name: Add Spark Operator Helm repo

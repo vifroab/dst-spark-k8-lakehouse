@@ -1,15 +1,16 @@
 hub:
   image:
-    name: jupyterhub/k8s-hub
-    tag: 4.3.1
+    name: statkube/jupyterhub-hub
+    tag: spark3.5.3-py3.12-1
   config:
     JupyterHub:
-      authenticator_class: dummy
-    DummyAuthenticator:
-      password: "test"
+      authenticator_class: nativeauthenticator.NativeAuthenticator
+    NativeAuthenticator:
+      enable_signup: true
+      open_signup: true
     Authenticator:
       admin_users:
-        - user
+        - admin
     KubeSpawner:
       uid: 0
       gid: 0
