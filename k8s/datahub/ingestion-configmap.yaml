@@ -49,3 +49,20 @@ data:
       config:
         server: http://datahub-datahub-gms.datahub.svc:8080
 
+  delta-recipe.yaml: |
+    source:
+      type: delta-lake
+      config:
+        env: "DEV"
+        platform_instance: "local-minio"
+        base_path: "s3://polaris/delta/demo"
+        s3:
+          aws_access_key_id: "admin"
+          aws_secret_access_key: "password"
+          endpoint_url: "http://minio.minio.svc:9000"
+          region_name: "us-east-1"
+    sink:
+      type: datahub-rest
+      config:
+        server: "http://datahub-datahub-gms.datahub.svc:8080"
+

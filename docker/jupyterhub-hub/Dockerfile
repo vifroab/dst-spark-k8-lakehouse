@@ -12,12 +12,12 @@ RUN pip install --no-cache-dir \
       jupyterhub \
       jupyterlab \
       jupyterhub-kubespawner \
-      jupyterhub-nativeauthenticator
+      jupyterhub-nativeauthenticator \
+      pycurl
 
 # Ensure the jupyterhub binary is on PATH for the non-root user that the chart uses
 RUN ln -s /usr/local/python/bin/jupyterhub /usr/local/bin/jupyterhub || true
 
 COPY jupyterhub_config.py /etc/jupyterhub/jupyterhub_config.py
 
-:q
 WORKDIR /srv/jupyterhub

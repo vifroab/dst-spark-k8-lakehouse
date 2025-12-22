@@ -24,8 +24,8 @@ spec:
           args:
             - |
               set -e
-              echo "Installing Iceberg connector..."
-              pip install --quiet 'acryl-datahub[iceberg]'
+              echo "Installing Connectors..."
+              pip install --quiet 'acryl-datahub[iceberg]' 'acryl-datahub[delta-lake]'
               
               echo "Waiting for DataHub GMS to be ready..."
               until curl -sf http://datahub-datahub-gms.datahub.svc:8080/health >/dev/null 2>&1; do
@@ -42,6 +42,9 @@ spec:
               echo "Starting Polaris ingestion..."
               datahub ingest -c /etc/datahub/polaris-recipe.yaml
               
+              echo "Starting Delta Lake ingestion..."
+              datahub ingest -c /etc/datahub/delta-recipe.yaml
+
               echo "Ingestion complete!"
           volumeMounts:
             - name: recipe-config
